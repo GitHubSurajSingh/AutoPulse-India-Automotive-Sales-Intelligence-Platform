@@ -1,5 +1,5 @@
 -- ================================================================
---  AutoPulse — Supabase SQL Schema
+--  AutoPulse — Supabase SQL Schema (Enhanced RLS)
 --  Run this entire file in: Supabase Dashboard → SQL Editor → Run
 -- ================================================================
 
@@ -70,23 +70,51 @@ CREATE INDEX IF NOT EXISTS idx_sales_submitted ON sales(submitted_at DESC);
 
 
 -- ── 3. ROW LEVEL SECURITY ────────────────────────────────────────
+
+-- Enable RLS on both tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
--- Allow login lookups on users table (anon can check credentials)
-DROP POLICY IF EXISTS "users_login" ON users;
-CREATE POLICY "users_login" ON users
+-- ────────────────────────────────────────────────────────────────
+-- USERS TABLE POLICIES
+-- ────────────────────────────────────────────────────────────────
+
+-- Allow anyone (anon) to read users (needed for login)
+DROP POLICY IF EXISTS "users_login_read" ON users;
+CREATE POLICY "users_login_read" ON users
   FOR SELECT USING (true);
 
--- Allow anyone to read all sales (dashboard needs full dataset)
+-- Prevent direct updates/deletes from frontend (optional - add later for admin panel)
+DROP POLICY IF EXISTS "users_no_write" ON users;
+CREATE POLICY "users_no_write" ON users
+  FOR INSERT WITH CHECK (false);
+
+
+-- ────────────────────────────────────────────────────────────────
+-- SALES TABLE POLICIES (Critical for multi-device sync)
+-- ────────────────────────────────────────────────────────────────
+
+-- Policy 1: ANYONE can INSERT a new sale (agency submission)
+DROP POLICY IF EXISTS "sales_insert_any" ON sales;
+CREATE POLICY "sales_insert_any" ON sales
+  FOR INSERT WITH CHECK (true);
+
+-- Policy 2: ANYONE can READ all sales
+--           (Managers/Admins see all data, Agencies see own data in app logic)
 DROP POLICY IF EXISTS "sales_read_all" ON sales;
 CREATE POLICY "sales_read_all" ON sales
   FOR SELECT USING (true);
 
--- Allow anyone to insert a sale (agency submits via anon key)
-DROP POLICY IF EXISTS "sales_insert" ON sales;
-CREATE POLICY "sales_insert" ON sales
-  FOR INSERT WITH CHECK (true);
+-- Optional: If you want to enforce agency_id restrictions at database level
+--           (Advanced - uncomment if needed)
+-- DROP POLICY IF EXISTS "sales_read_own" ON sales;
+-- CREATE POLICY "sales_read_own" ON sales
+--   FOR SELECT USING (
+--     auth.jwt()->>'role' = 'admin' OR
+--     auth.jwt()->>'role' = 'manager' OR
+--     auth.jwt()->>'role' = 'govt' OR
+--     auth.jwt()->>'agency' = agency_id
+--   );
 
 
 -- ── 4. HELPFUL VIEWS ────────────────────────────────────────────
@@ -139,3 +167,17 @@ SELECT
 FROM sales
 GROUP BY agency_id, agency_name
 ORDER BY total_revenue DESC;
+
+
+-- ── 5. VERIFICATION QUERIES (Run these to test) ─────────────────
+
+-- Check all sales in database
+-- SELECT COUNT(*) as total_sales FROM sales;
+
+-- Check by agency
+-- SELECT agency_id, agency_name, COUNT(*) as count FROM sales GROUP BY agency_id, agency_name;
+
+-- Check recent submissions (last 24 hours)
+-- SELECT invoice_id, agency_name, submitted_at FROM sales 
+-- WHERE submitted_at > NOW() - INTERVAL '24 hours' 
+-- ORDER BY submitted_at DESC;
