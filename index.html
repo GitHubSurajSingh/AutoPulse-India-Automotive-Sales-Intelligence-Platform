@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoPulse — Sign In</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0e1018;--surface:#161921;--s2:#1d2130;--border:#252a3a;
+  --ink:#eceef8;--muted:#636880;--accent:#f4793b;--blue:#4c9eff;
+  --green:#36d490;--purple:#9d6fff;--gold:#f5c842;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex}
+
+/* LEFT PANEL */
+.lp{
+  width:44%;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;justify-content:space-between;
+  padding:52px 56px;position:relative;overflow:hidden;flex-shrink:0;
+}
+.lp::before{content:'';position:absolute;width:600px;height:600px;
+  background:radial-gradient(circle,rgba(244,121,59,.12) 0%,transparent 65%);
+  top:-150px;right:-200px;pointer-events:none}
+.lp::after{content:'';position:absolute;width:400px;height:400px;
+  background:radial-gradient(circle,rgba(76,158,255,.08) 0%,transparent 65%);
+  bottom:-100px;left:-80px;pointer-events:none}
+.brand{position:relative;z-index:1}
+.brand-name{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-0.5px}
+.brand-name em{color:var(--accent);font-style:normal}
+.brand-sub{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-top:5px}
+.hero{position:relative;z-index:1}
+.hero h1{font-family:'Syne',sans-serif;font-size:38px;font-weight:800;line-height:1.15;letter-spacing:-1px}
+.hero h1 em{color:var(--accent);font-style:normal;display:block}
+.hero p{font-size:14px;color:var(--muted);margin-top:14px;line-height:1.75;max-width:340px}
+.stats{display:flex;gap:40px;position:relative;z-index:1}
+.stat-v{font-family:'Syne',sans-serif;font-size:28px;font-weight:800;color:var(--ink)}
+.stat-v span{color:var(--accent)}
+.stat-l{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* RIGHT PANEL */
+.rp{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 48px}
+.login-box{width:100%;max-width:420px}
+.login-title{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;letter-spacing:-.3px;margin-bottom:5px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:30px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px}
+.field input{
+  width:100%;background:var(--surface);border:1.5px solid var(--border);border-radius:10px;
+  color:var(--ink);padding:13px 16px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;
+  transition:border-color .18s,box-shadow .18s;
+}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(244,121,59,.1)}
+.err-box{
+  background:rgba(255,92,92,.07);border:1px solid rgba(255,92,92,.25);
+  border-radius:9px;padding:11px 14px;font-size:13px;color:#ff7070;
+  margin-bottom:14px;display:none
+}
+.btn-login{
+  width:100%;background:var(--accent);color:#fff;border:none;padding:14px;
+  border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:all .2s;letter-spacing:.2px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-login:hover{background:#e06520;transform:translateY(-1px);box-shadow:0 8px 24px rgba(244,121,59,.3)}
+.btn-login:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.spin{display:none;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* DEMO ACCOUNTS */
+.div-line{display:flex;align-items:center;gap:12px;margin:26px 0 18px}
+.div-line::before,.div-line::after{content:'';flex:1;height:1px;background:var(--border)}
+.div-line span{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
+.demo-group{margin-bottom:14px}
+.demo-g-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);margin-bottom:7px;padding-left:2px}
+.demo-list{display:flex;flex-direction:column;gap:5px}
+.demo-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--s2);border:1px solid var(--border);border-radius:9px;
+  padding:10px 13px;cursor:pointer;transition:all .18s;
+}
+.demo-row:hover{border-color:var(--accent);background:rgba(244,121,59,.05)}
+.demo-l{display:flex;align-items:center;gap:9px}
+.dav{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;flex-shrink:0}
+.dav-a{background:rgba(244,121,59,.12);color:var(--accent)}
+.dav-m{background:rgba(76,158,255,.12);color:var(--blue)}
+.dav-g{background:rgba(54,212,144,.12);color:var(--green)}
+.dav-ag{background:rgba(157,111,255,.12);color:var(--purple)}
+.d-name{font-size:12px;font-weight:600;color:var(--ink)}
+.d-cred{font-size:10px;color:var(--muted);margin-top:1px}
+.d-cred code{color:var(--blue);font-size:10px}
+.role-tag{padding:3px 8px;border-radius:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.rt-admin  {background:rgba(244,121,59,.1);color:var(--accent);border:1px solid rgba(244,121,59,.2)}
+.rt-manager{background:rgba(76,158,255,.1);color:var(--blue);border:1px solid rgba(76,158,255,.2)}
+.rt-govt   {background:rgba(54,212,144,.1);color:var(--green);border:1px solid rgba(54,212,144,.2)}
+.rt-agency {background:rgba(157,111,255,.1);color:var(--purple);border:1px solid rgba(157,111,255,.2)}
+
+@media(max-width:860px){
+  body{flex-direction:column}
+  .lp{width:100%;padding:28px 24px;min-height:0}
+  .hero,.stats{display:none}
+  .rp{padding:28px 20px}
+}
+</style>
+</head>
+<body>
+
+<div class="lp">
+  <div class="brand">
+    <div class="brand-name">Auto<em>Pulse</em></div>
+    <div class="brand-sub">Automotive Intelligence Platform</div>
+  </div>
+  <div class="hero">
+    <h1>Sales intelligence.<em>Built for India.</em></h1>
+    <p>Agencies submit. Managers analyse. Officials oversee. One platform — strict role separation, one source of truth.</p>
+  </div>
+  <div class="stats">
+    <div><div class="stat-v">10<span>K</span></div><div class="stat-l">Records in dataset</div></div>
+    <div><div class="stat-v">₹<span>17.2B</span></div><div class="stat-l">Revenue tracked</div></div>
+    <div><div class="stat-v">4</div><div class="stat-l">States · 8 brands</div></div>
+  </div>
+</div>
+
+<div class="rp">
+  <div class="login-box">
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Access is role-restricted. Contact admin for credentials.</div>
+
+    <div class="err-box" id="err">Incorrect username or password.</div>
+
+    <div class="field">
+      <label>Username</label>
+      <input id="u" type="text" placeholder="Enter your username" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="p" type="password" placeholder="Enter your password" autocomplete="current-password">
+    </div>
+    <button class="btn-login" id="btn" onclick="doLogin()">
+      <div class="spin" id="spin"></div>
+      <span id="lbl">Sign In →</span>
+    </button>
+
+    <div class="div-line"><span>Demo accounts</span></div>
+
+    <div class="demo-group">
+      <div class="demo-g-label">Analytics Access</div>
+      <div class="demo-list">
+        <div class="demo-row" onclick="fill('admin','Admin@2024')">
+          <div class="demo-l"><div class="dav dav-a">A</div><div><div class="d-name">National Admin</div><div class="d-cred"><code>admin</code> / <code>Admin@2024</code></div></div></div>
+          <span class="role-tag rt-admin">Admin</span>
+        </div>
+        <div class="demo-row" onclick="fill('manager','Mgr@2024')">
+          <div class="demo-l"><div class="dav dav-m">M</div><div><div class="d-name">Regional Manager</div><div class="d-cred"><code>manager</code> / <code>Mgr@2024</code></div></div></div>
+          <span class="role-tag rt-manager">Manager</span>
+        </div>
+        <div class="demo-row" onclick="fill('official','Gov@2024')">
+          <div class="demo-l"><div class="dav dav-g">G</div><div><div class="d-name">Govt. Official</div><div class="d-cred"><code>official</code> / <code>Gov@2024</code></div></div></div>
+          <span class="role-tag rt-govt">Govt</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="demo-group">
+      <div class="demo-g-label">Agency Portals</div>
+      <div class="demo-list">
+        <div class="demo-row" onclick="fill('mum_hub','Mum@2024')">
+          <div class="demo-l"><div class="dav dav-ag">M</div><div><div class="d-name">Mumbai AutoHub</div><div class="d-cred"><code>mum_hub</code> / <code>Mum@2024</code> · Maharashtra</div></div></div>
+          <span class="role-tag rt-agency">Agency</span>
+        </div>
+        <div class="demo-row" onclick="fill('del_elite','Del@2024')">
+          <div class="demo-l"><div class="dav dav-ag">D</div><div><div class="d-name">Delhi Elite Cars</div><div class="d-cred"><code>del_elite</code> / <code>Del@2024</code> · Delhi</div></div></div>
+          <span class="role-tag rt-agency">Agency</span>
+        </div>
+        <div class="demo-row" onclick="fill('blr_drive','Blr@2024')">
+          <div class="demo-l"><div class="dav dav-ag">B</div><div><div class="d-name">Bangalore DriveZone</div><div class="d-cred"><code>blr_drive</code> / <code>Blr@2024</code> · Karnataka</div></div></div>
+          <span class="role-tag rt-agency">Agency</span>
+        </div>
+        <div class="demo-row" onclick="fill('bpl_auto','Bpl@2024')">
+          <div class="demo-l"><div class="dav dav-ag">P</div><div><div class="d-name">Bhopal AutoWorld</div><div class="d-cred"><code>bpl_auto</code> / <code>Bpl@2024</code> · M.P.</div></div></div>
+          <span class="role-tag rt-agency">Agency</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+(()=>{ const u=Auth.get(); if(u) route(u); })();
+function route(u){ location.href = u.role==='agency' ? 'agency.html' : 'dashboard.html'; }
+function fill(u,p){ document.getElementById('u').value=u; document.getElementById('p').value=p; }
+async function doLogin(){
+  const u=document.getElementById('u').value.trim();
+  const p=document.getElementById('p').value;
+  const err=document.getElementById('err');
+  const btn=document.getElementById('btn');
+  const spin=document.getElementById('spin');
+  const lbl=document.getElementById('lbl');
+  err.style.display='none';
+  btn.disabled=true; spin.style.display='block'; lbl.textContent='Signing in…';
+  await new Promise(r=>setTimeout(r,400));
+  const res=await Auth.login(u,p);
+  btn.disabled=false; spin.style.display='none'; lbl.textContent='Sign In →';
+  if(!res.ok){ err.style.display='block'; return; }
+  route(res.user);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+</script>
+</body>
+</html>

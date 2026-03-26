@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoPulse — Analytics Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0c0e16;--surface:#131520;--s2:#191d2c;--s3:#1e2235;--border:#252a3e;
+  --ink:#eceef8;--muted:#5c6280;--accent:#f4793b;--blue:#4c9eff;--purple:#9d6fff;
+  --green:#36d490;--red:#ff5c5c;--teal:#2dd4c8;--gold:#f5c842;--pink:#f472b6;
+  --sw:232px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;font-size:14px}
+
+/* ── SIDEBAR ── */
+.sb{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:24px 22px 18px;border-bottom:1px solid var(--border)}
+.sb-logo-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.3px}
+.sb-logo-n em{color:var(--accent);font-style:normal}
+.sb-logo-s{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.nav{padding:12px 12px;flex:1;overflow-y:auto}
+.nav-s{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);padding:10px 10px 5px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;transition:all .18s;margin-bottom:2px}
+.nav-i:hover{color:var(--ink);background:var(--s2)}
+.nav-i.on{color:var(--accent);background:rgba(244,121,59,.1);border:1px solid rgba(244,121,59,.18)}
+.nav-i:not(.on){border:1px solid transparent}
+.nav-i.admin-only{display:none}
+.sb-foot{padding:13px 16px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sf-n{font-size:12px;font-weight:600;color:var(--ink)}
+.sf-r{font-size:10px;color:var(--muted);margin-top:1px}
+.btn-logout{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);padding:6px 11px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;transition:all .2s}
+.btn-logout:hover{color:var(--red);border-color:rgba(255,92,92,.3);background:rgba(255,92,92,.06)}
+
+/* ── TOPBAR ── */
+.main{margin-left:var(--sw);min-height:100vh}
+.topbar{height:58px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:50}
+.tb-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.tb-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.ch-admin  {background:rgba(244,121,59,.1);color:var(--accent);border:1px solid rgba(244,121,59,.2)}
+.ch-manager{background:rgba(76,158,255,.1);color:var(--blue);border:1px solid rgba(76,158,255,.2)}
+.ch-govt   {background:rgba(54,212,144,.1);color:var(--green);border:1px solid rgba(54,212,144,.2)}
+.ch-live   {background:rgba(54,212,144,.08);color:var(--green);border:1px solid rgba(54,212,144,.18)}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pd 2s infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.25}}
+.ref-timer{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500}
+.ref-timer strong{color:var(--ink)}
+.btn-ref{background:rgba(76,158,255,.08);border:1px solid rgba(76,158,255,.2);color:var(--blue);padding:7px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .18s}
+.btn-ref:hover{background:rgba(76,158,255,.14)}
+.btn-ref .sp{display:none;width:12px;height:12px;border:2px solid rgba(76,158,255,.3);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PAGES ── */
+.page{display:none;padding:26px;animation:fu .28s ease}
+.page.on{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ph{margin-bottom:22px;display:flex;justify-content:space-between;align-items:flex-end}
+.ph-l h1{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.3px}
+.ph-l p{font-size:12px;color:var(--muted);margin-top:3px}
+.ph-r{font-size:11px;color:var(--muted)}
+
+/* ── KPI CARDS ── */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(0,0,0,.4)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:13px 13px 0 0}
+.k1::before{background:linear-gradient(90deg,var(--accent),#f5a070)}
+.k2::before{background:linear-gradient(90deg,var(--blue),#80c4ff)}
+.k3::before{background:linear-gradient(90deg,var(--purple),#c4a0ff)}
+.k4::before{background:linear-gradient(90deg,var(--green),#80eabc)}
+.kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:9px}
+.kpi-v{font-family:'Syne',sans-serif;font-size:26px;font-weight:800}
+.kpi-s{margin-top:5px;font-size:11px;color:var(--muted)}
+.kpi-s strong{color:var(--green)}
+.kpi-ico{position:absolute;top:14px;right:14px;font-size:22px;opacity:.09}
+
+/* ── CHART CARDS ── */
+.r2{display:grid;grid-template-columns:2fr 1fr;gap:13px;margin-bottom:14px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:14px}
+.r22{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:14px}
+.cc{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:20px;transition:box-shadow .2s}
+.cc:hover{box-shadow:0 4px 20px rgba(0,0,0,.3)}
+.cc-t{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;margin-bottom:3px}
+.cc-s{font-size:11px;color:var(--muted);margin-bottom:15px}
+
+/* ── BRAND GRID ── */
+.brand-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
+.bc{background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:15px 16px;transition:all .18s}
+.bc:hover{border-color:rgba(244,121,59,.35)}
+.bc-n{font-family:'Syne',sans-serif;font-size:13px;font-weight:800;margin-bottom:6px}
+.bc-r{font-size:15px;font-weight:700;color:var(--accent)}
+.bc-m{font-size:11px;color:var(--muted);margin-top:3px}
+.bc-mg{font-size:11px;color:var(--green);margin-top:3px}
+
+/* ── TRANSACTIONS ── */
+.txn-toolbar{
+  padding:16px 20px;border-bottom:1px solid var(--border);
+  display:flex;flex-direction:column;gap:14px;
+}
+.txn-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.txn-top h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;flex-shrink:0}
+.txn-search{
+  flex:1;max-width:320px;background:var(--s2);border:1.5px solid var(--border);
+  border-radius:9px;color:var(--ink);padding:8px 14px 8px 36px;
+  font-family:'DM Sans',sans-serif;font-size:13px;outline:none;
+  transition:border-color .18s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235c6280' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:11px center;
+}
+.txn-search:focus{border-color:var(--accent)}
+.txn-search::placeholder{color:var(--muted)}
+.txn-meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.txn-meta{font-size:12px;color:var(--muted)}
+.txn-meta strong{color:var(--ink)}
+.txn-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 20px 14px}
+.filter-bar select,.filter-bar input[type="date"]{
+  background:var(--s2);border:1.5px solid var(--border);border-radius:8px;
+  color:var(--ink);padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;
+  outline:none;cursor:pointer;transition:border-color .18s;min-width:130px;
+}
+.filter-bar select:focus,.filter-bar input[type="date"]:focus{border-color:var(--accent)}
+.filter-bar select option{background:var(--s2)}
+.filter-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;flex-shrink:0}
+.filter-sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
+.btn-clear-filters{background:rgba(255,92,92,.08);border:1px solid rgba(255,92,92,.2);color:var(--red);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .18s;flex-shrink:0}
+.btn-clear-filters:hover{background:rgba(255,92,92,.14)}
+.active-filter-count{background:var(--accent);color:#fff;border-radius:50%;width:17px;height:17px;display:none;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.active-filter-count.show{display:flex}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{
+  text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--muted);padding:10px 13px;border-bottom:1px solid var(--border);
+  white-space:nowrap;cursor:pointer;user-select:none;transition:color .15s;
+  position:relative;
+}
+th:hover{color:var(--ink)}
+th.sort-a::after{content:'  ↑';color:var(--accent);font-size:11px}
+th.sort-d::after{content:'  ↓';color:var(--accent);font-size:11px}
+th.no-sort{cursor:default}
+td{padding:10px 13px;border-bottom:1px solid rgba(37,42,62,.5);white-space:nowrap;font-size:12px}
+tbody tr:hover td{background:rgba(244,121,59,.03)}
+tbody tr:last-child td{border-bottom:none}
+.inv{font-weight:700;color:var(--blue);font-size:11px}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.t-suv{background:rgba(244,121,59,.1);color:var(--accent)}
+.t-hatchback{background:rgba(157,111,255,.1);color:var(--purple)}
+.t-sedan{background:rgba(76,158,255,.1);color:var(--blue)}
+.t-mpv{background:rgba(54,212,144,.1);color:var(--green)}
+.fd{display:inline-flex;align-items:center;gap:4px}
+.fd::before{content:'';width:6px;height:6px;border-radius:50%;display:inline-block}
+.fd-Petrol::before{background:#f97316}.fd-Electric::before{background:#38bdf8}
+.fd-Diesel::before{background:#a78bfa}.fd-CNG::before{background:#34d399}
+.source-live{color:var(--green);font-size:10px;font-weight:600}
+.source-seed{color:var(--muted);font-size:10px}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;justify-content:between;padding:14px 20px;border-top:1px solid var(--border);gap:8px;flex-wrap:wrap}
+.pagination-info{font-size:12px;color:var(--muted);flex:1}
+.pagination-info strong{color:var(--ink)}
+.page-btns{display:flex;gap:5px;align-items:center}
+.page-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:6px 12px;border-radius:7px;cursor:pointer;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .18s;min-width:36px;text-align:center}
+.page-btn:hover{border-color:var(--ink);color:var(--ink)}
+.page-btn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.page-btn:disabled{opacity:.35;cursor:not-allowed}
+.page-size-sel{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--ink);padding:6px 10px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
+
+/* HEATMAP */
+.hm-table{width:100%;border-collapse:separate;border-spacing:3px;font-size:12px}
+.hm-table th{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:6px 8px;text-align:center;font-weight:600;white-space:nowrap}
+.hm-table th:first-child{text-align:left}
+.hm-table td{padding:8px 10px;border-radius:7px;text-align:center;font-weight:600;font-size:12px;transition:transform .15s}
+.hm-table td:first-child{text-align:left;font-weight:500;color:var(--ink);background:transparent!important}
+.hm-table td:not(:first-child):hover{transform:scale(1.08);cursor:default}
+
+/* STATE TABLE */
+.state-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.state-tbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--border)}
+.state-tbl td{padding:11px 13px;border-bottom:1px solid rgba(37,42,62,.5)}
+.state-tbl tr:last-child td{border-bottom:none}
+.bar-wrap{display:flex;align-items:center;gap:8px}
+.bar-fill{height:5px;border-radius:3px;background:linear-gradient(90deg,var(--accent),#f5a070)}
+
+/* ADMIN */
+.admin-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.acc-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.acc-tbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)}
+.acc-tbl td{padding:9px 10px;border-bottom:1px solid rgba(37,42,62,.4)}
+.acc-tbl tr:last-child td{border-bottom:none}
+.tick{color:var(--green);font-weight:700;font-size:14px}
+.cross{color:rgba(92,98,128,.35);font-size:14px}
+.u-row{padding:11px 0;border-bottom:1px solid rgba(37,42,62,.4)}
+.u-row:last-child{border-bottom:none}
+.u-name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.u-cred{font-size:11px;color:var(--muted);margin-top:3px}
+.u-cred code{color:var(--blue);background:rgba(76,158,255,.08);padding:1px 5px;border-radius:3px;font-size:10px}
+.sys-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid rgba(37,42,62,.4);font-size:12px}
+.sys-row:last-child{border-bottom:none}
+.sys-k{color:var(--muted)}
+
+/* EXPORT BTN */
+.btn-export{background:rgba(54,212,144,.08);border:1px solid rgba(54,212,144,.2);color:var(--green);padding:7px 13px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .18s;display:flex;align-items:center;gap:5px}
+.btn-export:hover{background:rgba(54,212,144,.14)}
+
+/* LOADING */
+.loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999}
+.loading-ring{width:46px;height:46px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px}
+.loading-txt{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="loading" id="loading">
+  <div class="loading-ring"></div>
+  <div class="loading-txt" id="load-txt">Loading analytics platform…</div>
+</div>
+
+<!-- SIDEBAR -->
+<div class="sb">
+  <div class="sb-logo">
+    <div class="sb-logo-n">Auto<em>Pulse</em></div>
+    <div class="sb-logo-s">Analytics Dashboard</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-s">Analytics</div>
+    <div class="nav-i on"   onclick="go('overview')"><span>📊</span> Overview</div>
+    <div class="nav-i"      onclick="go('brands')"><span>🏷</span> Brand Analysis</div>
+    <div class="nav-i"      onclick="go('geography')"><span>🗺</span> Geography</div>
+    <div class="nav-i"      onclick="go('transactions')"><span>🗂</span> Transactions</div>
+    <div class="nav-s">System</div>
+    <div class="nav-i admin-only" id="nav-admin" onclick="go('admin')"><span>⚙</span> Admin Panel</div>
+  </nav>
+  <div class="sb-foot">
+    <div><div class="sf-n" id="sf-n">—</div><div class="sf-r" id="sf-r">—</div></div>
+    <button class="btn-logout" onclick="Auth.logout()">Logout</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tb-title">National Overview</div>
+    <div class="tb-right">
+      <span class="chip" id="role-chip">—</span>
+      <span class="chip ch-live"><span class="ldot"></span> Live</span>
+      <span class="ref-timer">Refresh in <strong data-countdown>—</strong></span>
+      <button class="btn-ref" id="ref-btn" onclick="manualRefresh()">
+        <div class="sp" id="ref-sp"></div> ⟳ Refresh
+      </button>
+    </div>
+  </div>
+
+  <!-- ── OVERVIEW ── -->
+  <div class="page on" id="page-overview">
+    <div class="ph">
+      <div class="ph-l"><h1>National Sales Overview</h1><p>Cleaned dataset — all agencies, states, and brands combined</p></div>
+      <div class="ph-r">Updated: <span id="last-updated">—</span></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi k1"><div class="kpi-l">Total Revenue</div><div class="kpi-v" id="kv-rev">—</div><div class="kpi-s"><strong id="kv-units">—</strong> transactions</div><div class="kpi-ico">💰</div></div>
+      <div class="kpi k2"><div class="kpi-l">Total Profit</div><div class="kpi-v" id="kv-profit">—</div><div class="kpi-s">Avg margin <strong id="kv-margin">—</strong></div><div class="kpi-ico">📈</div></div>
+      <div class="kpi k3"><div class="kpi-l">Avg Price / Unit</div><div class="kpi-v" id="kv-avg">—</div><div class="kpi-s">Ex all charges</div><div class="kpi-ico">🚗</div></div>
+      <div class="kpi k4"><div class="kpi-l">Avg Profit / Unit</div><div class="kpi-v" id="kv-ppu">—</div><div class="kpi-s">Top: <strong id="kv-top">—</strong></div><div class="kpi-ico">🏆</div></div>
+    </div>
+    <div class="r2">
+      <div class="cc"><div class="cc-t">Monthly Revenue & Profit Trend</div><div class="cc-s">Last 16 months · ₹ Millions</div><canvas id="ch-trend" height="88"></canvas></div>
+      <div class="cc"><div class="cc-t">Segment Revenue Share</div><div class="cc-s">By vehicle class</div><canvas id="ch-seg" height="188"></canvas></div>
+    </div>
+    <div class="r3">
+      <div class="cc"><div class="cc-t">Fuel Type Mix</div><div class="cc-s">Units by fuel category</div><canvas id="ch-fuel" height="188"></canvas></div>
+      <div class="cc"><div class="cc-t">Customer Segment</div><div class="cc-s">Revenue by buyer type · ₹M</div><canvas id="ch-cust" height="188"></canvas></div>
+      <div class="cc"><div class="cc-t">Transmission Split</div><div class="cc-s">Manual vs Automatic</div><canvas id="ch-trans" height="188"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── BRANDS ── -->
+  <div class="page" id="page-brands">
+    <div class="ph"><div class="ph-l"><h1>Brand Performance</h1><p>Revenue, volumes, and margins per manufacturer</p></div></div>
+    <div class="brand-grid" id="brand-grid"></div>
+    <div class="r22">
+      <div class="cc"><div class="cc-t">Revenue by Brand</div><div class="cc-s">₹ Billions</div><canvas id="ch-br-rev" height="110"></canvas></div>
+      <div class="cc"><div class="cc-t">Avg Profit Margin %</div><div class="cc-s">By manufacturer</div><canvas id="ch-br-mar" height="220"></canvas></div>
+    </div>
+    <div class="cc"><div class="cc-t" style="margin-bottom:4px">State × Brand Sales Heatmap</div><div class="cc-s">Units sold per brand in each state</div><div style="overflow-x:auto"><table class="hm-table" id="heatmap"></table></div></div>
+  </div>
+
+  <!-- ── GEOGRAPHY ── -->
+  <div class="page" id="page-geography">
+    <div class="ph"><div class="ph-l"><h1>Regional Performance</h1><p>State-level revenue, profit, and unit share</p></div></div>
+    <div class="kpis" id="state-kpis"></div>
+    <div class="r22" style="margin-bottom:14px">
+      <div class="cc"><div class="cc-t">Revenue vs Profit by State</div><div class="cc-s">₹ Billions</div><canvas id="ch-state" height="130"></canvas></div>
+      <div class="cc"><div class="cc-t">Unit Share by State</div><div class="cc-s">% of total volume</div><canvas id="ch-state-u" height="220"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="cc-t" style="margin-bottom:4px">Detailed State Metrics</div>
+      <div class="cc-s">Revenue, profit, units, and margin per state</div>
+      <table class="state-tbl"><thead><tr><th>State</th><th>Revenue</th><th>Profit</th><th>Units</th><th>Avg Margin</th><th>Revenue Share</th></tr></thead>
+      <tbody id="state-tbody"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ── TRANSACTIONS ── -->
+  <div class="page" id="page-transactions">
+    <div class="ph">
+      <div class="ph-l"><h1>All Transactions</h1><p>Complete dataset — 10,000 seed records + live agency submissions. Full filter & sort.</p></div>
+    </div>
+
+    <div class="cc" style="padding:0;overflow:hidden">
+      <!-- Toolbar -->
+      <div class="txn-toolbar">
+        <div class="txn-top">
+          <h3>Transaction Log</h3>
+          <input class="txn-search" id="txn-search" placeholder="Search invoice, salesperson, brand, city…" oninput="applyFilters()">
+          <div class="txn-actions">
+            <button class="btn-export" onclick="exportCSV()">⬇ Export CSV</button>
+            <button class="btn-ref" onclick="applyFilters()" style="padding:7px 12px">⟳</button>
+          </div>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="filter-bar">
+          <span class="filter-label">Filters</span>
+          <select id="fl-state" onchange="applyFilters()">
+            <option value="">All States</option>
+            <option>Delhi</option><option>Karnataka</option>
+            <option>Madhya Pradesh</option><option>Maharashtra</option>
+          </select>
+          <select id="fl-brand" onchange="applyFilters()">
+            <option value="">All Brands</option>
+            <option>Honda</option><option>Hyundai</option><option>Kia</option><option>MG</option>
+            <option>Mahindra</option><option>Maruti Suzuki</option><option>Tata</option><option>Toyota</option>
+          </select>
+          <select id="fl-seg" onchange="applyFilters()">
+            <option value="">All Segments</option>
+            <option>SUV</option><option>Hatchback</option><option>Sedan</option><option>MPV</option>
+          </select>
+          <select id="fl-fuel" onchange="applyFilters()">
+            <option value="">All Fuels</option>
+            <option>Petrol</option><option>Diesel</option><option>Electric</option><option>CNG</option>
+          </select>
+          <select id="fl-trans" onchange="applyFilters()">
+            <option value="">Any Trans</option>
+            <option>Manual</option><option>Automatic</option>
+          </select>
+          <select id="fl-ctype" onchange="applyFilters()">
+            <option value="">All Customers</option>
+            <option>Individual</option><option>Corporate</option><option>Government</option>
+          </select>
+          <div class="filter-sep"></div>
+          <span class="filter-label">Date</span>
+          <input type="date" id="fl-date-from" onchange="applyFilters()" title="From date">
+          <input type="date" id="fl-date-to"   onchange="applyFilters()" title="To date">
+          <div class="filter-sep"></div>
+          <span class="filter-label">Price ₹</span>
+          <input type="number" id="fl-price-min" placeholder="Min" oninput="applyFilters()" style="background:var(--s2);border:1.5px solid var(--border);border-radius:8px;color:var(--ink);padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:100px;transition:border-color .18s">
+          <input type="number" id="fl-price-max" placeholder="Max" oninput="applyFilters()" style="background:var(--s2);border:1.5px solid var(--border);border-radius:8px;color:var(--ink);padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:100px;transition:border-color .18s">
+          <button class="btn-clear-filters" onclick="clearFilters()">✕ Clear All</button>
+          <div class="active-filter-count" id="afc">0</div>
+        </div>
+
+        <!-- Meta row -->
+        <div class="txn-meta-row" style="padding:0 20px 14px">
+          <div class="txn-meta">
+            Showing <strong id="txn-showing">—</strong> of <strong id="txn-total">—</strong> records
+            <span id="txn-filter-note" style="color:var(--accent);margin-left:4px"></span>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:11px;color:var(--muted)">Rows per page:</span>
+            <select class="page-size-sel" id="page-size" onchange="pageSize=parseInt(this.value);currentPage=1;renderTable()">
+              <option value="25">25</option><option value="50" selected>50</option>
+              <option value="100">100</option><option value="250">250</option><option value="500">500</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('invoice_id')" id="th-invoice_id">Invoice</th>
+              <th onclick="sortBy('sale_date')"  id="th-sale_date">Date</th>
+              <th onclick="sortBy('state')"      id="th-state">State</th>
+              <th onclick="sortBy('city')"       id="th-city">City</th>
+              <th onclick="sortBy('salesperson')"id="th-salesperson">Salesperson</th>
+              <th onclick="sortBy('customer_type')" id="th-customer_type">Customer</th>
+              <th onclick="sortBy('brand')"      id="th-brand">Brand</th>
+              <th onclick="sortBy('model')"      id="th-model">Model</th>
+              <th class="no-sort">Segment</th>
+              <th class="no-sort">Fuel</th>
+              <th onclick="sortBy('transmission')" id="th-transmission">Trans</th>
+              <th onclick="sortBy('exshowroom_price')" id="th-exshowroom_price">Ex-Showroom</th>
+              <th onclick="sortBy('final_sale_price')" id="th-final_sale_price">Final Price</th>
+              <th onclick="sortBy('profit')"     id="th-profit">Profit</th>
+              <th onclick="sortBy('profit_margin')" id="th-profit_margin">Margin</th>
+              <th class="no-sort">Source</th>
+            </tr>
+          </thead>
+          <tbody id="txn-body"></tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION -->
+      <div class="pagination">
+        <div class="pagination-info" id="pg-info">—</div>
+        <div class="page-btns" id="pg-btns"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ADMIN ── -->
+  <div class="page" id="page-admin">
+    <div class="ph"><div class="ph-l"><h1>Admin Panel</h1><p>User management, access matrix, and system status</p></div></div>
+    <div class="admin-2">
+      <div class="cc"><div class="cc-t" style="margin-bottom:14px">User Accounts</div><div id="user-list"></div></div>
+      <div>
+        <div class="cc" style="margin-bottom:13px">
+          <div class="cc-t" style="margin-bottom:12px">Access Control Matrix</div>
+          <table class="acc-tbl">
+            <thead><tr><th>Role</th><th>BI Dashboard</th><th>All Transactions</th><th>Enter Sales</th><th>Own Records</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip ch-admin" style="font-size:9px">Admin</span></td>   <td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+              <tr><td><span class="chip ch-manager" style="font-size:9px">Manager</span></td><td class="tick">✓</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+              <tr><td><span class="chip ch-govt" style="font-size:9px">Govt</span></td>     <td class="tick">✓</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+              <tr><td><span class="chip" style="background:rgba(157,111,255,.1);color:var(--purple);border:1px solid rgba(157,111,255,.2);font-size:9px">Agency</span></td>
+                  <td class="cross">✗</td><td class="cross">✗</td><td class="tick">✓</td><td class="tick">✓</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cc">
+          <div class="cc-t" style="margin-bottom:12px">System Status</div>
+          <div class="sys-row"><span class="sys-k">Database</span><span id="sys-db">—</span></div>
+          <div class="sys-row"><span class="sys-k">Seed Records</span><span style="color:var(--green)">10,000 (from CSV)</span></div>
+          <div class="sys-row"><span class="sys-k">Live Submissions</span><span id="sys-live" style="color:var(--blue)">—</span></div>
+          <div class="sys-row"><span class="sys-k">Total Records</span><span id="sys-total" style="color:var(--ink);font-weight:600">—</span></div>
+          <div class="sys-row"><span class="sys-k">Auto-Refresh</span><span style="color:var(--green)">Every 24 hours</span></div>
+          <div class="sys-row"><span class="sys-k">Next Refresh In</span><span style="color:var(--blue)" data-countdown>—</span></div>
+          <div class="sys-row"><span class="sys-k">Last Updated</span><span id="sys-ts" style="color:var(--ink)">—</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script src="app.js"></script>
+<script src="seed_data.js"></script>
+<script>
+/* ── AUTH ── */
+const ME = Auth.require(['admin','manager','govt']);
+document.getElementById('sf-n').textContent = ME.name;
+document.getElementById('sf-r').textContent = ME.role.charAt(0).toUpperCase()+ME.role.slice(1);
+if(ME.role==='admin') document.querySelectorAll('.admin-only').forEach(el=>el.style.display='flex');
+const RC=document.getElementById('role-chip');
+const RCL={admin:'ch-admin',manager:'ch-manager',govt:'ch-govt'};
+RC.textContent=ME.role.toUpperCase(); RC.className='chip '+(RCL[ME.role]||'ch-admin');
+
+/* ── DATA STATE ── */
+let liveSales = [];
+let allRows   = []; // seed + live combined
+let filtered  = []; // after filters applied
+let sortCol   = 'sale_date';
+let sortDir   = 'desc';
+let currentPage = 1;
+let pageSize    = 50;
+
+/* Build combined rows from SEED_TRANSACTIONS + live */
+function buildAllRows(){
+  const seed = SEED_TRANSACTIONS.map(r=>({
+    invoice_id:r.id, sale_date:r.date, state:r.state, city:r.city,
+    salesperson:r.salesperson, customer_type:r.ctype,
+    brand:r.brand, model:r.model, segment:r.segment,
+    fuel_type:r.fuel, transmission:r.trans,
+    exshowroom_price:r.ex, rto:r.rto, insurance:r.ins,
+    accessories:r.acc, discount:r.disc,
+    final_sale_price:r.final, cost_price:r.cost,
+    profit:r.profit, profit_margin:r.margin,
+    _source:'seed'
+  }));
+  const live = liveSales.map(r=>({...r, _source:'live'}));
+  allRows = [...live, ...seed]; // live first
+}
+
+/* ── FETCH LIVE DATA ── */
+async function fetchLive(){
+  const {rows} = await DB.getAllSales();
+  liveSales = rows;
+}
+
+/* ── KPI UPDATE ── */
+function updateKPIs(){
+  buildAllRows();
+  const totalRev  = allRows.reduce((s,r)=>s+r.final_sale_price,0);
+  const totalProf = allRows.reduce((s,r)=>s+r.profit,0);
+  const totalU    = allRows.length;
+  const avgMar    = allRows.reduce((s,r)=>s+r.profit_margin,0)/totalU;
+  document.getElementById('kv-rev').textContent    = fmt.inrB(totalRev);
+  document.getElementById('kv-profit').textContent = fmt.inrB(totalProf);
+  document.getElementById('kv-margin').textContent = fmt.pct(avgMar);
+  document.getElementById('kv-units').textContent  = totalU.toLocaleString('en-IN');
+  document.getElementById('kv-avg').textContent    = fmt.inrM(totalRev/totalU);
+  document.getElementById('kv-ppu').textContent    = fmt.inrM(totalProf/totalU);
+  document.getElementById('kv-top').textContent    = 'Mahindra';
+  document.getElementById('last-updated').textContent = fmt.now();
+  document.getElementById('sys-ts').textContent       = fmt.now();
+  document.getElementById('sys-live').textContent     = liveSales.length+' records';
+  document.getElementById('sys-total').textContent    = totalU.toLocaleString('en-IN')+' records';
+}
+
+/* ── CHARTS ── */
+const G={color:'rgba(37,42,62,.8)',drawBorder:false};
+const T={color:'#5c6280',font:{size:11,family:'DM Sans'}};
+const C={or:'#f4793b',bl:'#4c9eff',pu:'#9d6fff',gr:'#36d490',te:'#2dd4c8',go:'#f5c842',re:'#ff5c5c',pi:'#f472b6'};
+Chart.defaults.font.family='DM Sans';
+const CH={};
+function mk(id,type,data,opts){
+  if(CH[id]) CH[id].destroy();
+  CH[id]=new Chart(document.getElementById(id),{type,data,options:opts});
+}
+
+/* Pre-aggregate from seed for performance */
+const S = {
+  monthly:[
+    {m:'Nov 24',rev:659.50,profit:131.56,cnt:385},{m:'Dec 24',rev:667.12,profit:134.21,cnt:389},
+    {m:'Jan 25',rev:765.71,profit:151.81,cnt:438},{m:'Feb 25',rev:664.57,profit:133.40,cnt:389},
+    {m:'Mar 25',rev:729.27,profit:146.58,cnt:422},{m:'Apr 25',rev:709.05,profit:140.50,cnt:413},
+    {m:'May 25',rev:721.77,profit:145.62,cnt:420},{m:'Jun 25',rev:686.64,profit:137.98,cnt:394},
+    {m:'Jul 25',rev:741.56,profit:147.68,cnt:436},{m:'Aug 25',rev:700.00,profit:140.43,cnt:409},
+    {m:'Sep 25',rev:748.14,profit:151.18,cnt:433},{m:'Oct 25',rev:735.91,profit:148.37,cnt:441},
+    {m:'Nov 25',rev:730.38,profit:147.27,cnt:424},{m:'Dec 25',rev:668.33,profit:133.75,cnt:399},
+    {m:'Jan 26',rev:693.49,profit:140.02,cnt:393},{m:'Feb 26',rev:382.63,profit:76.49,cnt:224},
+  ],
+  brands:[
+    {n:'Mahindra',rev:2.9385,cnt:1272,mar:20.24},{n:'Toyota',rev:2.8378,cnt:1147,mar:20.01},
+    {n:'MG',rev:2.7556,cnt:1284,mar:20.03},{n:'Kia',rev:2.2210,cnt:1267,mar:20.18},
+    {n:'Honda',rev:1.9817,cnt:1254,mar:20.04},{n:'Hyundai',rev:1.6391,cnt:1222,mar:19.81},
+    {n:'Tata',rev:1.5023,cnt:1267,mar:19.88},{n:'Maruti Suzuki',rev:1.2996,cnt:1287,mar:19.60},
+  ],
+  states:[
+    {n:'Madhya Pradesh',rev:4.3344,profit:0.8677,cnt:2520,mar:20.02},
+    {n:'Delhi',rev:4.3327,profit:0.8696,cnt:2530,mar:20.08},
+    {n:'Karnataka',rev:4.2577,profit:0.8522,cnt:2464,mar:20.02},
+    {n:'Maharashtra',rev:4.2507,profit:0.8558,cnt:2486,mar:20.14},
+  ],
+  heatmap:{
+    Delhi:       {Honda:308,Hyundai:321,Kia:343,MG:340,Mahindra:306,'Maruti Suzuki':331,Tata:322,Toyota:259},
+    Karnataka:   {Honda:310,Hyundai:291,Kia:297,MG:316,Mahindra:336,'Maruti Suzuki':333,Tata:286,Toyota:295},
+    'Madhya Pradesh':{Honda:349,Hyundai:280,Kia:303,MG:333,Mahindra:312,'Maruti Suzuki':315,Tata:336,Toyota:292},
+    Maharashtra: {Honda:287,Hyundai:330,Kia:324,MG:295,Mahindra:318,'Maruti Suzuki':308,Tata:323,Toyota:301},
+  },
+};
+
+function buildCharts(){
+  mk('ch-trend','line',{
+    labels:S.monthly.map(m=>m.m),
+    datasets:[
+      {label:'Revenue (₹M)',data:S.monthly.map(m=>m.rev),borderColor:C.or,backgroundColor:'rgba(244,121,59,.07)',borderWidth:2,fill:true,tension:.4,pointBackgroundColor:C.or,pointRadius:3},
+      {label:'Profit (₹M)', data:S.monthly.map(m=>m.profit),borderColor:C.gr,backgroundColor:'rgba(54,212,144,.05)',borderWidth:2,fill:true,tension:.4,pointBackgroundColor:C.gr,pointRadius:3},
+    ]
+  },{responsive:true,animation:{duration:700},plugins:{legend:{position:'top',labels:{color:'#5c6280',boxWidth:10,font:{size:11}}}},scales:{x:{grid:G,ticks:T},y:{grid:G,ticks:{...T,callback:v=>'₹'+v+'M'}}}});
+
+  mk('ch-seg','doughnut',{labels:['SUV','Hatchback','MPV','Sedan'],datasets:[{data:[10404,1952,2838,1982],backgroundColor:[C.or,C.pu,C.gr,C.bl],borderWidth:0,hoverOffset:8}]},{responsive:true,cutout:'68%',animation:{duration:700},plugins:{legend:{position:'bottom',labels:{color:'#5c6280',boxWidth:8,padding:12,font:{size:11}}}}});
+
+  mk('ch-fuel','polarArea',{labels:['Petrol','Electric','Diesel','CNG'],datasets:[{data:[2473,2568,2482,2477],backgroundColor:['rgba(244,121,59,.75)','rgba(76,158,255,.75)','rgba(157,111,255,.75)','rgba(54,212,144,.75)'],borderWidth:0}]},{responsive:true,animation:{duration:700},plugins:{legend:{position:'bottom',labels:{color:'#5c6280',boxWidth:8,padding:10,font:{size:11}}}},scales:{r:{grid:{color:'rgba(37,42,62,.9)'},ticks:{display:false}}}});
+
+  mk('ch-cust','doughnut',{labels:['Individual','Corporate','Government'],datasets:[{data:[5864,5497,5815],backgroundColor:[C.or,C.bl,C.gr],borderWidth:0,hoverOffset:8}]},{responsive:true,cutout:'65%',animation:{duration:700},plugins:{legend:{position:'bottom',labels:{color:'#5c6280',boxWidth:8,padding:10,font:{size:11}}}}});
+
+  mk('ch-trans','bar',{labels:['Automatic','Manual'],datasets:[{data:[5119,4881],backgroundColor:[C.or,C.bl],borderRadius:10,barThickness:56}]},{responsive:true,animation:{duration:700},plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:T},y:{grid:G,ticks:T}}});
+
+  mk('ch-br-rev','bar',{labels:S.brands.map(b=>b.n),datasets:[{label:'₹B',data:S.brands.map(b=>b.rev),backgroundColor:[C.or,C.bl,C.pu,C.gr,C.te,C.go,C.re,C.pi],borderRadius:6,barThickness:28}]},{responsive:true,indexAxis:'y',animation:{duration:700},plugins:{legend:{display:false}},scales:{x:{grid:G,ticks:{...T,callback:v=>'₹'+v+'B'}},y:{grid:{display:false},ticks:T}}});
+
+  mk('ch-br-mar','radar',{labels:S.brands.map(b=>b.n.split(' ')[0]),datasets:[{label:'Margin %',data:S.brands.map(b=>b.mar),borderColor:C.or,backgroundColor:'rgba(244,121,59,.1)',borderWidth:2,pointBackgroundColor:C.or,pointRadius:4}]},{responsive:true,animation:{duration:700},plugins:{legend:{display:false}},scales:{r:{grid:{color:'rgba(37,42,62,.9)'},angleLines:{color:'rgba(37,42,62,.9)'},ticks:{color:'#5c6280',backdropColor:'transparent',font:{size:9}},pointLabels:{color:'#5c6280',font:{size:10}},min:19,max:21}}});
+
+  mk('ch-state','bar',{labels:S.states.map(s=>s.n),datasets:[{label:'Revenue (₹B)',data:S.states.map(s=>s.rev),backgroundColor:'rgba(244,121,59,.8)',borderRadius:6,barThickness:34},{label:'Profit (₹B)',data:S.states.map(s=>s.profit),backgroundColor:'rgba(54,212,144,.8)',borderRadius:6,barThickness:34}]},{responsive:true,animation:{duration:700},plugins:{legend:{position:'top',labels:{color:'#5c6280',boxWidth:10,font:{size:11}}}},scales:{x:{grid:{display:false},ticks:T},y:{grid:G,ticks:{...T,callback:v=>'₹'+v+'B'}}}});
+
+  mk('ch-state-u','doughnut',{labels:S.states.map(s=>s.n),datasets:[{data:S.states.map(s=>s.cnt),backgroundColor:[C.or,C.bl,C.pu,C.gr],borderWidth:0,hoverOffset:8}]},{responsive:true,cutout:'60%',animation:{duration:700},plugins:{legend:{position:'bottom',labels:{color:'#5c6280',boxWidth:8,padding:12,font:{size:11}}}}});
+}
+
+/* ── BRAND GRID ── */
+function buildBrandGrid(){
+  document.getElementById('brand-grid').innerHTML=S.brands.map(b=>`
+    <div class="bc"><div class="bc-n">${b.n}</div><div class="bc-r">₹${b.rev}B</div>
+    <div class="bc-m">${b.cnt.toLocaleString()} units</div>
+    <div class="bc-mg">↑ ${b.mar.toFixed(2)}% avg margin</div></div>
+  `).join('');
+}
+
+/* ── HEATMAP ── */
+function buildHeatmap(){
+  const brands=['Honda','Hyundai','Kia','MG','Mahindra','Maruti Suzuki','Tata','Toyota'];
+  const states=Object.keys(S.heatmap);
+  const maxV=Math.max(...states.flatMap(s=>brands.map(b=>S.heatmap[s][b]||0)));
+  const hdr=`<thead><tr><th></th>${brands.map(b=>`<th>${b}</th>`).join('')}</tr></thead>`;
+  const rows=states.map(s=>{
+    const cells=brands.map(b=>{
+      const v=S.heatmap[s][b]||0, p=v/maxV;
+      const al=(0.08+p*.65).toFixed(2);
+      const tc=p>0.45?'#fff':'var(--ink)';
+      return `<td style="background:rgba(244,121,59,${al});color:${tc}">${v}</td>`;
+    }).join('');
+    return `<tr><td>${s}</td>${cells}</tr>`;
+  }).join('');
+  document.getElementById('heatmap').innerHTML=hdr+`<tbody>${rows}</tbody>`;
+}
+
+/* ── STATE DETAILS ── */
+function buildStateDetails(){
+  const tot=S.states.reduce((s,r)=>s+r.cnt,0);
+  document.getElementById('state-kpis').innerHTML=S.states.map((s,i)=>`
+    <div class="kpi k${i+1}"><div class="kpi-l">${s.n}</div>
+    <div class="kpi-v">₹${s.rev}B</div>
+    <div class="kpi-s"><strong>${s.cnt.toLocaleString()}</strong> units · ₹${s.profit}B profit</div></div>
+  `).join('');
+  document.getElementById('state-tbody').innerHTML=S.states.map(s=>`
+    <tr><td style="font-weight:700">${s.n}</td>
+    <td style="font-weight:600">₹${s.rev}B</td>
+    <td style="color:var(--green);font-weight:600">₹${s.profit}B</td>
+    <td>${s.cnt.toLocaleString()}</td>
+    <td style="color:var(--green)">${s.mar}%</td>
+    <td><div class="bar-wrap"><div class="bar-fill" style="width:${Math.round(s.cnt/tot*140)}px"></div><span style="color:var(--muted);font-size:11px">${(s.cnt/tot*100).toFixed(1)}%</span></div></td></tr>
+  `).join('');
+}
+
+/* ── TRANSACTIONS FILTER + SORT + PAGINATE ── */
+function applyFilters(){
+  const q   =(document.getElementById('txn-search').value||'').toLowerCase();
+  const fst = document.getElementById('fl-state').value;
+  const fbr = document.getElementById('fl-brand').value;
+  const fsg = document.getElementById('fl-seg').value;
+  const ffu = document.getElementById('fl-fuel').value;
+  const ftr = document.getElementById('fl-trans').value;
+  const fct = document.getElementById('fl-ctype').value;
+  const fdf = document.getElementById('fl-date-from').value;
+  const fdt = document.getElementById('fl-date-to').value;
+  const fpn = parseFloat(document.getElementById('fl-price-min').value)||0;
+  const fpx = parseFloat(document.getElementById('fl-price-max').value)||Infinity;
+
+  let actCount=0;
+  if(fst)actCount++;if(fbr)actCount++;if(fsg)actCount++;if(ffu)actCount++;
+  if(ftr)actCount++;if(fct)actCount++;if(fdf)actCount++;if(fdt)actCount++;
+  if(fpn)actCount++;if(fpx<Infinity)actCount++;if(q)actCount++;
+
+  const afc=document.getElementById('afc');
+  afc.textContent=actCount;
+  afc.className='active-filter-count'+(actCount>0?' show':'');
+
+  filtered = allRows.filter(r=>{
+    if(fst && r.state!==fst) return false;
+    if(fbr && r.brand!==fbr) return false;
+    if(fsg && r.segment!==fsg) return false;
+    if(ffu && r.fuel_type!==ffu) return false;
+    if(ftr && r.transmission!==ftr) return false;
+    if(fct && r.customer_type!==fct) return false;
+    if(fdf && r.sale_date<fdf) return false;
+    if(fdt && r.sale_date>fdt) return false;
+    if(r.final_sale_price<fpn||r.final_sale_price>fpx) return false;
+    if(q){
+      const hay=[r.invoice_id,r.salesperson,r.brand,r.model,r.city,r.state,r.customer_type,r.fuel_type].map(x=>(x||'').toLowerCase()).join(' ');
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // sort
+  filtered.sort((a,b)=>{
+    let av=a[sortCol]||'', bv=b[sortCol]||'';
+    if(typeof av==='number'||!isNaN(parseFloat(av))){av=parseFloat(av);bv=parseFloat(bv);}
+    if(av<bv) return sortDir==='asc'?-1:1;
+    if(av>bv) return sortDir==='asc'?1:-1;
+    return 0;
+  });
+
+  const fn = actCount>0?` · ${actCount} filter${actCount>1?'s':''} active`:'';
+  document.getElementById('txn-filter-note').textContent=fn;
+  document.getElementById('txn-total').textContent=allRows.length.toLocaleString('en-IN');
+
+  currentPage=1;
+  renderTable();
+}
+
+function sortBy(col){
+  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
+  else { sortCol=col; sortDir='asc'; }
+  document.querySelectorAll('th[id^="th-"]').forEach(th=>{
+    th.classList.remove('sort-a','sort-d');
+    if(th.id==='th-'+col) th.classList.add(sortDir==='asc'?'sort-a':'sort-d');
+  });
+  applyFilters();
+}
+
+function clearFilters(){
+  ['fl-state','fl-brand','fl-seg','fl-fuel','fl-trans','fl-ctype'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  ['fl-date-from','fl-date-to','fl-price-min','fl-price-max'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('txn-search').value='';
+  applyFilters();
+}
+
+function renderTable(){
+  const start=(currentPage-1)*pageSize;
+  const end=Math.min(start+pageSize,filtered.length);
+  const page=filtered.slice(start,end);
+
+  document.getElementById('txn-showing').textContent=filtered.length.toLocaleString('en-IN');
+  document.getElementById('pg-info').innerHTML=`Showing <strong>${start+1}–${end}</strong> of <strong>${filtered.length.toLocaleString('en-IN')}</strong> records`;
+
+  const tbody=document.getElementById('txn-body');
+  tbody.innerHTML=page.map(r=>`<tr>
+    <td class="inv">${r.invoice_id}</td>
+    <td style="color:var(--muted);font-size:11px">${fmt.date(r.sale_date)}</td>
+    <td>${r.state}</td>
+    <td>${r.city||'—'}</td>
+    <td>${r.salesperson||'—'}</td>
+    <td>${r.customer_type||'—'}</td>
+    <td style="font-weight:700">${r.brand}</td>
+    <td>${r.model}</td>
+    <td><span class="tag t-${(r.segment||'').toLowerCase()}">${r.segment||'—'}</span></td>
+    <td><span class="fd fd-${r.fuel_type}">${r.fuel_type}</span></td>
+    <td>${r.transmission||'—'}</td>
+    <td>${fmt.inr(r.exshowroom_price||0)}</td>
+    <td style="font-weight:700">${fmt.inr(r.final_sale_price)}</td>
+    <td style="color:var(--green);font-weight:600">${fmt.inr(r.profit)}</td>
+    <td style="color:var(--accent)">${(+r.profit_margin).toFixed(2)}%</td>
+    <td>${r._source==='live'?`<span class="source-live">● Live</span>`:`<span class="source-seed">Seed</span>`}</td>
+  </tr>`).join('');
+
+  // Pagination buttons
+  const totalPages=Math.ceil(filtered.length/pageSize);
+  const btns=document.getElementById('pg-btns');
+  if(totalPages<=1){btns.innerHTML='';return;}
+  let html='';
+  html+=`<button class="page-btn" onclick="gotoPage(1)" ${currentPage===1?'disabled':''}>«</button>`;
+  html+=`<button class="page-btn" onclick="gotoPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  const start2=Math.max(1,currentPage-2), end2=Math.min(totalPages,currentPage+2);
+  if(start2>1) html+=`<button class="page-btn" onclick="gotoPage(1)">1</button>${start2>2?'<span style="color:var(--muted);padding:0 4px">…</span>':''}`;
+  for(let i=start2;i<=end2;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
+  if(end2<totalPages) html+=`${end2<totalPages-1?'<span style="color:var(--muted);padding:0 4px">…</span>':''}<button class="page-btn" onclick="gotoPage(${totalPages})">${totalPages}</button>`;
+  html+=`<button class="page-btn" onclick="gotoPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  html+=`<button class="page-btn" onclick="gotoPage(${totalPages})" ${currentPage===totalPages?'disabled':''}>»</button>`;
+  btns.innerHTML=html;
+}
+
+function gotoPage(p){
+  currentPage=p;
+  renderTable();
+  document.getElementById('page-transactions').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV(){
+  const cols=['invoice_id','sale_date','state','city','salesperson','customer_type','brand','model','segment','fuel_type','transmission','exshowroom_price','final_sale_price','profit','profit_margin'];
+  const hdr=cols.join(',');
+  const rows=filtered.map(r=>cols.map(c=>{
+    const v=r[c]??'';
+    return typeof v==='string'&&v.includes(',')? `"${v}"`:v;
+  }).join(',')).join('\n');
+  const blob=new Blob([hdr+'\n'+rows],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`autopulse_transactions_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  Toast.show('ok','Export Ready',filtered.length.toLocaleString('en-IN')+' rows exported to CSV.');
+}
+
+/* ── ADMIN PANEL ── */
+function buildAdmin(){
+  const CHIP={admin:'ch-admin',manager:'ch-manager',govt:'ch-govt'};
+  document.getElementById('user-list').innerHTML=Object.entries(USERS).map(([u,d])=>`
+    <div class="u-row">
+      <div class="u-name">${d.name}
+        <span class="chip ${CHIP[d.role]||''}" style="font-size:9px">${d.role.toUpperCase()}</span>
+      </div>
+      <div class="u-cred"><code>${u}</code> · <code>${d.password}</code>${d.city?' · '+d.city+', '+d.state:''}</div>
+    </div>
+  `).join('');
+  document.getElementById('sys-db').innerHTML=DB_ENABLED
+    ?'<span style="color:var(--green)">✓ Supabase Connected</span>'
+    :'<span style="color:var(--accent)">⚠ localStorage Mode</span>';
+}
+
+/* ── PAGE ROUTING ── */
+function go(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  document.querySelectorAll('.nav-i').forEach(n=>{if(n.getAttribute('onclick')?.includes(id))n.classList.add('on');});
+  const T={overview:'National Overview',brands:'Brand Analysis',geography:'Geography',transactions:'All Transactions',admin:'Admin Panel'};
+  document.getElementById('tb-title').textContent=T[id]||id;
+  if(id==='transactions') applyFilters();
+}
+
+/* ── REFRESH ── */
+async function doRefresh(){
+  await fetchLive();
+  buildAllRows();
+  updateKPIs();
+  const ts=fmt.now();
+  document.getElementById('last-updated').textContent=ts;
+  document.getElementById('sys-ts').textContent=ts;
+}
+
+async function manualRefresh(){
+  const btn=document.getElementById('ref-btn'), sp=document.getElementById('ref-sp');
+  btn.style.opacity='.6'; sp.style.display='block';
+  await doRefresh();
+  await new Promise(r=>setTimeout(r,400));
+  btn.style.opacity='1'; sp.style.display='none';
+  Toast.show('ok','Refreshed','Dashboard updated with latest data.');
+}
+
+/* ── DEFAULT SORT INDICATOR ── */
+function initSortIndicator(){
+  const el=document.getElementById('th-sale_date');
+  if(el) el.classList.add('sort-d');
+}
+
+/* ── BOOT ── */
+(async()=>{
+  document.getElementById('load-txt').textContent='Loading 10,000 records…';
+  await fetchLive();
+  document.getElementById('load-txt').textContent='Building dashboard…';
+  buildAllRows();
+  updateKPIs();
+  buildCharts();
+  buildBrandGrid();
+  buildHeatmap();
+  buildStateDetails();
+  buildAdmin();
+  initSortIndicator();
+  applyFilters();
+  Refresh.start(async()=>{
+    await doRefresh();
+    Toast.show('ok','Auto-Refreshed','Dashboard updated — next refresh in 24h.');
+  });
+  document.getElementById('loading').style.display='none';
+})();
+</script>
+</body>
+</html>

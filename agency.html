@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AutoPulse — Agency Portal</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f4f2ee;--surface:#ffffff;--s2:#eeebe5;--border:#ddd8cf;
+  --ink:#12141c;--muted:#7a7568;--accent:#7c4dff;--al:rgba(124,77,255,.08);
+  --green:#1a8a50;--red:#c0311a;--blue:#1a5cc8;--orange:#d4621a;
+  --sw:240px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+
+/* SIDEBAR */
+.sb{position:fixed;left:0;top:0;bottom:0;width:var(--sw);background:var(--ink);display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:26px 22px 20px;border-bottom:1px solid rgba(255,255,255,.07)}
+.sb-logo-n{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff}
+.sb-logo-n em{color:var(--accent);font-style:normal}
+.sb-logo-s{font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-top:4px}
+.sb-agency{margin:14px 14px 4px;background:rgba(124,77,255,.1);border:1px solid rgba(124,77,255,.2);border-radius:10px;padding:12px 14px}
+.sb-ag-lbl{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.3);margin-bottom:4px}
+.sb-ag-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#ddd6ff}
+.sb-ag-loc{font-size:11px;color:rgba(255,255,255,.3);margin-top:2px}
+.nav{padding:12px 12px;flex:1;overflow-y:auto}
+.nav-s{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.25);padding:10px 10px 6px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;color:rgba(255,255,255,.4);font-size:13px;font-weight:500;transition:all .18s;margin-bottom:2px}
+.nav-i:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nav-i.on{color:#fff;background:rgba(124,77,255,.18)}
+.sb-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between}
+.sf-n{font-size:12px;font-weight:600;color:rgba(255,255,255,.8)}
+.sf-r{font-size:10px;color:rgba(255,255,255,.3);margin-top:1px}
+.btn-logout{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.4);padding:6px 10px;border-radius:7px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;transition:all .2s}
+.btn-logout:hover{color:#ff7070;border-color:rgba(255,100,100,.3);background:rgba(255,100,100,.08)}
+
+/* MAIN */
+.main{margin-left:var(--sw);min-height:100vh}
+.topbar{height:58px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 26px;position:sticky;top:0;z-index:50}
+.tb-title{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.tb-right{display:flex;align-items:center;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.ch-agency{background:rgba(124,77,255,.1);color:var(--accent);border:1px solid rgba(124,77,255,.2)}
+.ch-live{background:rgba(26,138,80,.1);color:var(--green);border:1px solid rgba(26,138,80,.2)}
+.ch-local{background:rgba(122,117,104,.1);color:var(--muted);border:1px solid var(--border)}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pd 2s infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* PAGES */
+.page{display:none;padding:26px;animation:fu .28s ease}
+.page.on{display:block}
+@keyframes fu{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ph{margin-bottom:22px}
+.ph h1{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.3px}
+.ph p{font-size:13px;color:var(--muted);margin-top:4px}
+
+/* FORM */
+.form-layout{display:grid;grid-template-columns:1fr 360px;gap:20px;align-items:start}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.card-body{padding:26px 28px}
+.card-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:800;margin-bottom:4px}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:24px}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:15px}
+.f{display:flex;flex-direction:column;gap:5px}
+.f.full{grid-column:1/-1}
+.f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+.f label small{color:var(--blue);text-transform:none;letter-spacing:0;font-weight:400;font-size:10px}
+.f input,.f select{background:var(--bg);border:1.5px solid var(--border);border-radius:9px;color:var(--ink);padding:10px 13px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;width:100%;transition:border-color .18s,box-shadow .18s}
+.f input:focus,.f select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(124,77,255,.09)}
+.f input[readonly]{background:rgba(26,92,200,.04);border-color:rgba(26,92,200,.2);color:var(--blue);font-weight:600;cursor:default}
+.f input.f-profit{background:rgba(26,138,80,.04);border-color:rgba(26,138,80,.22);color:var(--green)}
+.f input.f-total{background:rgba(124,77,255,.05);border-color:rgba(124,77,255,.22);color:var(--accent);font-weight:700;font-size:14px}
+.f input.f-err{border-color:var(--red)!important}
+.f select option{background:#fff}
+.sec{grid-column:1/-1;font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);display:flex;align-items:center;gap:8px;padding-top:4px}
+.sec::after{content:'';flex:1;height:1px;background:rgba(124,77,255,.15)}
+.form-actions{grid-column:1/-1;display:flex;gap:10px;padding-top:18px;border-top:1px solid var(--border);margin-top:4px}
+.btn-ghost{background:transparent;border:1.5px solid var(--border);color:var(--muted);padding:10px 20px;border-radius:9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;transition:all .18s}
+.btn-ghost:hover{border-color:var(--ink);color:var(--ink)}
+.btn-save{background:var(--accent);color:#fff;border:none;padding:10px 28px;border-radius:9px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;transition:all .2s;box-shadow:0 4px 16px rgba(124,77,255,.25);display:flex;align-items:center;gap:8px}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(124,77,255,.35)}
+.btn-save:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.btn-save .sp{display:none;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* PREVIEW */
+.pv-card{position:sticky;top:70px}
+.pv-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.pv-head h3{font-family:'Syne',sans-serif;font-size:13px;font-weight:800}
+.pv-dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pd 1.8s infinite}
+.pv-body{padding:14px 20px}
+.pvr{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.05);font-size:12px}
+.pvr:last-of-type{border-bottom:none}
+.pvr-k{color:var(--muted)}
+.pvr-v{font-weight:600;text-align:right;max-width:175px;word-break:break-word}
+.pv-price{margin:0 20px;background:var(--accent);border-radius:11px;padding:16px 18px}
+.pvp-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.6);margin-bottom:5px}
+.pvp-v{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff}
+.pv-metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 20px}
+.pvm{background:var(--s2);border:1px solid var(--border);border-radius:9px;padding:11px 13px}
+.pvm-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px}
+.pvm-v{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--green)}
+.pvm-v.m{color:var(--accent)}
+
+/* RECORDS TABLE */
+.tbl-toolbar{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.tbl-toolbar h3{font-family:'Syne',sans-serif;font-size:15px;font-weight:800}
+.tbl-meta{font-size:12px;color:var(--muted)}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:9px 13px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
+th:hover{color:var(--ink)}
+th.sort-asc::after{content:' ↑';color:var(--accent)}
+th.sort-desc::after{content:' ↓';color:var(--accent)}
+td{padding:10px 13px;border-bottom:1px solid rgba(0,0,0,.05);white-space:nowrap}
+tbody tr:hover td{background:rgba(124,77,255,.03)}
+tbody tr:last-child td{border-bottom:none}
+.inv{font-weight:700;color:var(--blue);font-size:11px}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:600}
+.t-suv{background:rgba(212,98,26,.1);color:var(--orange)}.t-hatchback{background:rgba(124,77,255,.08);color:var(--accent)}.t-sedan{background:rgba(26,92,200,.08);color:var(--blue)}.t-mpv{background:rgba(26,138,80,.08);color:var(--green)}
+.fd{display:inline-flex;align-items:center;gap:4px}
+.fd::before{content:'';width:6px;height:6px;border-radius:50%;display:inline-block}
+.fd-Petrol::before{background:#f97316}.fd-Electric::before{background:#38bdf8}.fd-Diesel::before{background:#a78bfa}.fd-CNG::before{background:#34d399}
+
+/* SUMMARY */
+.stat-band{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:20px}
+.sbox{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:17px 19px}
+.sbox-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:8px}
+.sbox-v{font-family:'Syne',sans-serif;font-size:23px;font-weight:800}
+.sbox-s{font-size:11px;color:var(--muted);margin-top:3px}
+
+/* BTN SMALL */
+.btn-sm{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:7px 13px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .18s}
+.btn-sm:hover{border-color:var(--ink);color:var(--ink)}
+
+/* EMPTY */
+.empty{text-align:center;padding:56px 20px;color:var(--muted)}
+.empty-ico{font-size:44px;opacity:.25;margin-bottom:12px}
+</style>
+</head>
+<body>
+
+<div class="sb">
+  <div class="sb-logo">
+    <div class="sb-logo-n">Auto<em>Pulse</em></div>
+    <div class="sb-logo-s">Agency Portal</div>
+  </div>
+  <div class="sb-agency">
+    <div class="sb-ag-lbl">Logged in as</div>
+    <div class="sb-ag-name" id="sb-name">—</div>
+    <div class="sb-ag-loc" id="sb-loc">—</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-s">My Portal</div>
+    <div class="nav-i on" onclick="go('entry')"><span>＋</span> New Sale Entry</div>
+    <div class="nav-i" onclick="go('records')"><span>📋</span> My Records</div>
+    <div class="nav-i" onclick="go('summary')"><span>📊</span> My Summary</div>
+  </nav>
+  <div class="sb-foot">
+    <div><div class="sf-n" id="sf-n">—</div><div class="sf-r">Agency Staff</div></div>
+    <button class="btn-logout" onclick="Auth.logout()">Logout</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="tb-title">New Sale Entry</div>
+    <div class="tb-right">
+      <span class="chip ch-agency">Agency</span>
+      <span class="chip" id="db-chip">—</span>
+    </div>
+  </div>
+
+  <!-- ── ENTRY ── -->
+  <div class="page on" id="page-entry">
+    <div class="ph">
+      <h1>Record a New Sale</h1>
+      <p>Fill vehicle and customer details. Pricing is auto-computed from ex-showroom price.</p>
+    </div>
+    <div class="form-layout">
+      <div class="card">
+        <div class="card-body">
+          <div class="card-title">Sale Invoice</div>
+          <div class="card-sub">Fields in <span style="color:var(--blue);font-weight:600">blue</span> are auto-calculated and read-only.</div>
+          <div class="fg">
+            <div class="sec">Customer Details</div>
+            <div class="f"><label>Salesperson Name</label><input id="f-sp" placeholder="Your full name" oninput="preview()"></div>
+            <div class="f"><label>Sale Date</label><input type="date" id="f-date" onchange="preview()"></div>
+            <div class="f"><label>Customer Type</label>
+              <select id="f-ct" onchange="preview()">
+                <option value="">— Select —</option>
+                <option>Individual</option><option>Corporate</option><option>Government</option>
+              </select>
+            </div>
+            <div class="f"><label>Customer Name <small>(optional)</small></label><input id="f-cn" placeholder="Customer full name" oninput="preview()"></div>
+            <div class="f"><label>State <small>[locked to agency]</small></label><input id="f-state" readonly></div>
+            <div class="f"><label>City <small>[locked to agency]</small></label><input id="f-city" readonly></div>
+            <div class="sec">Vehicle Details</div>
+            <div class="f"><label>Brand</label>
+              <select id="f-brand" onchange="fillModels();preview()">
+                <option value="">— Select Brand —</option>
+                <option>Honda</option><option>Hyundai</option><option>Kia</option><option>MG</option>
+                <option>Mahindra</option><option>Maruti Suzuki</option><option>Tata</option><option>Toyota</option>
+              </select>
+            </div>
+            <div class="f"><label>Model</label>
+              <select id="f-model" onchange="fillSeg();preview()">
+                <option value="">— Select Model —</option>
+              </select>
+            </div>
+            <div class="f"><label>Segment <small>[auto]</small></label><input id="f-seg" readonly></div>
+            <div class="f"><label>Fuel Type</label>
+              <select id="f-fuel" onchange="preview()">
+                <option value="">— Select —</option>
+                <option>Petrol</option><option>Diesel</option><option>Electric</option><option>CNG</option>
+              </select>
+            </div>
+            <div class="f"><label>Transmission</label>
+              <select id="f-trans" onchange="preview()">
+                <option value="">— Select —</option>
+                <option>Manual</option><option>Automatic</option>
+              </select>
+            </div>
+            <div class="sec">Pricing</div>
+            <div class="f"><label>Ex-Showroom Price (₹)</label><input type="number" id="f-ex" placeholder="e.g. 1400000" oninput="calc()"></div>
+            <div class="f"><label>Accessories (₹)</label><input type="number" id="f-acc" placeholder="0" oninput="calc()"></div>
+            <div class="f"><label>Discount (₹)</label><input type="number" id="f-disc" placeholder="0" oninput="calc()"></div>
+            <div class="f"><label>RTO <small>[auto · 10.5%]</small></label><input id="f-rto" readonly></div>
+            <div class="f"><label>Insurance <small>[auto · 3.2%]</small></label><input id="f-ins" readonly></div>
+            <div class="f"><label>Cost Price <small>[auto · 87% of final]</small></label><input id="f-cost" readonly></div>
+            <div class="f full"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly class="f-total"></div>
+            <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
+            <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
+            <div class="form-actions">
+              <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
+              <button class="btn-save" id="save-btn" onclick="submitSale()">
+                <div class="sp" id="save-sp"></div> Save Sale →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREVIEW -->
+      <div class="card pv-card">
+        <div class="pv-head"><div class="pv-dot"></div><h3>Live Invoice Preview</h3></div>
+        <div class="pv-body">
+          <div class="pvr"><span class="pvr-k">Invoice ID</span><span class="pvr-v" id="pv-inv">—</span></div>
+          <div class="pvr"><span class="pvr-k">Date</span><span class="pvr-v" id="pv-date">—</span></div>
+          <div class="pvr"><span class="pvr-k">Salesperson</span><span class="pvr-v" id="pv-sp">—</span></div>
+          <div class="pvr"><span class="pvr-k">Customer</span><span class="pvr-v" id="pv-ct">—</span></div>
+          <div class="pvr"><span class="pvr-k">Location</span><span class="pvr-v" id="pv-loc">—</span></div>
+          <div class="pvr"><span class="pvr-k">Vehicle</span><span class="pvr-v" id="pv-veh">—</span></div>
+          <div class="pvr"><span class="pvr-k">Fuel / Trans</span><span class="pvr-v" id="pv-fuel">—</span></div>
+          <div class="pvr"><span class="pvr-k">Ex-Showroom</span><span class="pvr-v" id="pv-ex">—</span></div>
+          <div class="pvr"><span class="pvr-k">RTO + Insurance</span><span class="pvr-v" id="pv-rtoi">—</span></div>
+          <div class="pvr"><span class="pvr-k">Accessories</span><span class="pvr-v" id="pv-acc">—</span></div>
+          <div class="pvr"><span class="pvr-k">Discount</span><span class="pvr-v" id="pv-disc" style="color:var(--red)">—</span></div>
+        </div>
+        <div class="pv-price">
+          <div class="pvp-l">Final Sale Price</div>
+          <div class="pvp-v" id="pv-final">₹ —</div>
+        </div>
+        <div class="pv-metrics">
+          <div class="pvm"><div class="pvm-l">Profit</div><div class="pvm-v" id="pv-profit">₹ —</div></div>
+          <div class="pvm"><div class="pvm-l">Margin</div><div class="pvm-v m" id="pv-margin">—%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RECORDS ── -->
+  <div class="page" id="page-records">
+    <div class="ph"><h1>My Sales Records</h1><p>All transactions submitted by your agency — your data only.</p></div>
+    <div class="card">
+      <div class="tbl-toolbar">
+        <div><h3>Transaction Log</h3><div class="tbl-meta" id="rec-meta">Loading…</div></div>
+        <button class="btn-sm" onclick="loadRecords()">⟳ Refresh</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Invoice</th><th>Date</th><th>Salesperson</th><th>Customer Type</th>
+            <th>Brand</th><th>Model</th><th>Segment</th><th>Fuel</th><th>Trans</th>
+            <th>Final Price</th><th>Profit</th><th>Margin</th>
+          </tr></thead>
+          <tbody id="rec-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SUMMARY ── -->
+  <div class="page" id="page-summary">
+    <div class="ph"><h1>My Agency Summary</h1><p>Performance overview based on your submitted sales.</p></div>
+    <div class="stat-band">
+      <div class="sbox"><div class="sbox-l">Total Revenue</div><div class="sbox-v" id="s-rev">—</div><div class="sbox-s">This agency</div></div>
+      <div class="sbox"><div class="sbox-l">Total Profit</div><div class="sbox-v" id="s-profit">—</div><div class="sbox-s">Net earnings</div></div>
+      <div class="sbox"><div class="sbox-l">Units Sold</div><div class="sbox-v" id="s-units">—</div><div class="sbox-s">Transactions</div></div>
+      <div class="sbox"><div class="sbox-l">Avg Margin</div><div class="sbox-v" id="s-margin">—</div><div class="sbox-s">Profit %</div></div>
+    </div>
+    <div class="card">
+      <div class="tbl-toolbar"><div><h3>Brand Breakdown</h3><div class="tbl-meta">Your sales grouped by brand</div></div></div>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Brand</th><th>Units</th><th>Revenue</th><th>Profit</th><th>Avg Margin</th></tr></thead>
+        <tbody id="brand-body"></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script>
+const ME = Auth.require(['agency']);
+document.getElementById('sb-name').textContent = ME.name;
+document.getElementById('sb-loc').textContent  = (ME.city||'')+(ME.state?', '+ME.state:'');
+document.getElementById('sf-n').textContent    = ME.name;
+document.getElementById('f-state').value = ME.state||'';
+document.getElementById('f-city').value  = ME.city||'';
+document.getElementById('f-date').valueAsDate = new Date();
+
+const dbC = document.getElementById('db-chip');
+if (DB_ENABLED) { dbC.textContent='● Supabase'; dbC.className='chip ch-live'; }
+else            { dbC.textContent='◌ Local';    dbC.className='chip ch-local'; }
+
+const MODELS = {
+  Honda:['City'], Hyundai:['Creta','i20'], Kia:['Seltos'], MG:['Hector'],
+  Mahindra:['Scorpio-N','XUV700'], 'Maruti Suzuki':['Baleno','Brezza','Swift'],
+  Tata:['Nexon','Punch'], Toyota:['Innova Crysta'],
+};
+const SEGS = {
+  City:'Sedan',Creta:'SUV',i20:'Hatchback',Seltos:'SUV',Hector:'SUV',
+  'Scorpio-N':'SUV',XUV700:'SUV',Baleno:'Hatchback',Brezza:'SUV',Swift:'Hatchback',
+  Nexon:'SUV',Punch:'Hatchback','Innova Crysta':'MPV',
+};
+
+function fillModels(){
+  const el=document.getElementById('f-model');
+  el.innerHTML='<option value="">— Select Model —</option>';
+  (MODELS[document.getElementById('f-brand').value]||[]).forEach(m=>{
+    const o=document.createElement('option');o.textContent=o.value=m;el.appendChild(o);
+  });
+  document.getElementById('f-seg').value='';
+}
+function fillSeg(){ document.getElementById('f-seg').value=SEGS[document.getElementById('f-model').value]||''; }
+
+function calc(){
+  const ex=parseFloat(document.getElementById('f-ex').value)||0;
+  const ac=parseFloat(document.getElementById('f-acc').value)||0;
+  const di=parseFloat(document.getElementById('f-disc').value)||0;
+  const rto=Math.round(ex*.105);
+  const ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di;
+  const cst=Math.round(fin*.87);
+  const prf=fin-cst;
+  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
+  const set=(id,v)=>document.getElementById(id).value=v||'';
+  set('f-rto',    rto>0?rto.toLocaleString('en-IN'):'');
+  set('f-ins',    ins>0?ins.toLocaleString('en-IN'):'');
+  set('f-cost',   cst>0?cst.toLocaleString('en-IN'):'');
+  set('f-final',  fin>0?fin.toLocaleString('en-IN'):'');
+  set('f-profit', prf>0?prf.toLocaleString('en-IN'):'');
+  set('f-margin', fin>0?mar+' %':'');
+  preview();
+}
+
+function preview(){
+  const ex=parseFloat(document.getElementById('f-ex').value)||0;
+  const ac=parseFloat(document.getElementById('f-acc').value)||0;
+  const di=parseFloat(document.getElementById('f-disc').value)||0;
+  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
+  const br=document.getElementById('f-brand').value, mo=document.getElementById('f-model').value;
+  const fu=document.getElementById('f-fuel').value, tr=document.getElementById('f-trans').value;
+  const s=(id,v)=>document.getElementById(id).textContent=v;
+  s('pv-inv','INV'+(parseInt(localStorage.getItem('ap_inv_'+ME.agency)||'11000')+1));
+  s('pv-date',document.getElementById('f-date').value||'—');
+  s('pv-sp',document.getElementById('f-sp').value||'—');
+  s('pv-ct',document.getElementById('f-ct').value||'—');
+  s('pv-loc',(ME.city||'—')+', '+(ME.state||''));
+  s('pv-veh',br&&mo?br+' '+mo:br||'—');
+  s('pv-fuel',[fu,tr].filter(Boolean).join(' · ')||'—');
+  s('pv-ex',ex>0?fmt.inr(ex):'—');
+  s('pv-rtoi',(rto+ins)>0?fmt.inr(rto+ins):'—');
+  s('pv-acc',ac>0?fmt.inr(ac):'—');
+  s('pv-disc',di>0?'− '+fmt.inr(di):'—');
+  s('pv-final',fin>0?fmt.inr(fin):'₹ —');
+  s('pv-profit',prf>0?fmt.inr(prf):'₹ —');
+  s('pv-margin',fin>0?mar+' %':'—%');
+}
+
+function resetForm(){
+  ['f-sp','f-cn','f-ct','f-brand','f-model','f-seg','f-fuel','f-trans',
+   'f-ex','f-acc','f-disc','f-rto','f-ins','f-cost','f-final','f-profit','f-margin'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el.tagName==='SELECT') el.selectedIndex=0; else el.value='';
+    el.classList.remove('f-err');
+  });
+  document.getElementById('f-date').valueAsDate=new Date();
+  preview();
+}
+
+async function submitSale(){
+  const req=['f-sp','f-ct','f-brand','f-model','f-fuel','f-trans','f-date','f-ex'];
+  let ok=true;
+  req.forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.classList.add('f-err');ok=false;}else el.classList.remove('f-err');});
+  if(!ok){Toast.show('warn','Missing fields','Please fill all required fields.');return;}
+
+  const ex=parseFloat(document.getElementById('f-ex').value)||0;
+  const ac=parseFloat(document.getElementById('f-acc').value)||0;
+  const di=parseFloat(document.getElementById('f-disc').value)||0;
+  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=parseFloat(fin>0?((prf/fin)*100).toFixed(2):0);
+
+  const rec={
+    invoice_id:InvCounter.next(ME.agency),
+    sale_date:document.getElementById('f-date').value,
+    salesperson:document.getElementById('f-sp').value,
+    customer_name:document.getElementById('f-cn').value||null,
+    customer_type:document.getElementById('f-ct').value,
+    state:ME.state, city:ME.city,
+    brand:document.getElementById('f-brand').value,
+    model:document.getElementById('f-model').value,
+    segment:document.getElementById('f-seg').value,
+    fuel_type:document.getElementById('f-fuel').value,
+    transmission:document.getElementById('f-trans').value,
+    exshowroom_price:ex, rto, insurance:ins, accessories:ac, discount:di,
+    final_sale_price:fin, cost_price:cst, profit:prf, profit_margin:mar,
+    agency_id:ME.agency, agency_name:ME.name,
+    submitted_at:new Date().toISOString(),
+  };
+
+  const btn=document.getElementById('save-btn'), sp=document.getElementById('save-sp');
+  btn.disabled=true; sp.style.display='inline-block';
+  const res=await DB.insertSale(rec);
+  btn.disabled=false; sp.style.display='none';
+
+  if(res.ok){
+    Toast.show('ok','Sale Saved!',rec.invoice_id+' recorded successfully'+(res.src==='supabase'?' in database.':' locally.'));
+    resetForm();
+  } else {
+    Toast.show('err','Save Failed','Could not save the record. Please try again.');
+  }
+}
+
+async function loadRecords(){
+  const tbody=document.getElementById('rec-body');
+  tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--muted)">Loading…</td></tr>';
+  document.getElementById('rec-meta').textContent='…';
+  const {rows}=await DB.getAgencySales(ME.agency);
+  document.getElementById('rec-meta').textContent=rows.length+' transaction'+(rows.length!==1?'s':'')+' found';
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="12"><div class="empty"><div class="empty-ico">📭</div><p>No records yet. Submit your first sale!</p></div></td></tr>';
+    buildSummary([]);return;
+  }
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td class="inv">${r.invoice_id}</td>
+    <td style="color:var(--muted)">${fmt.date(r.sale_date)}</td>
+    <td>${r.salesperson||'—'}</td><td>${r.customer_type||'—'}</td>
+    <td style="font-weight:600">${r.brand}</td><td>${r.model}</td>
+    <td><span class="tag t-${(r.segment||'').toLowerCase()}">${r.segment||'—'}</span></td>
+    <td><span class="fd fd-${r.fuel_type}">${r.fuel_type}</span></td>
+    <td>${r.transmission||'—'}</td>
+    <td style="font-weight:700">${fmt.inr(r.final_sale_price)}</td>
+    <td style="color:var(--green);font-weight:600">${fmt.inr(r.profit)}</td>
+    <td style="color:var(--accent)">${r.profit_margin}%</td>
+  </tr>`).join('');
+  buildSummary(rows);
+}
+
+function buildSummary(rows){
+  const tr=rows.reduce((s,r)=>s+r.final_sale_price,0);
+  const tp=rows.reduce((s,r)=>s+r.profit,0);
+  const am=rows.length?rows.reduce((s,r)=>s+r.profit_margin,0)/rows.length:0;
+  document.getElementById('s-rev').textContent=tr>0?fmt.inrM(tr):'₹ 0';
+  document.getElementById('s-profit').textContent=tp>0?fmt.inrM(tp):'₹ 0';
+  document.getElementById('s-units').textContent=rows.length;
+  document.getElementById('s-margin').textContent=am>0?fmt.pct(am):'0%';
+  const bm={};
+  rows.forEach(r=>{if(!bm[r.brand])bm[r.brand]={cnt:0,rev:0,prf:0,mars:[]};bm[r.brand].cnt++;bm[r.brand].rev+=r.final_sale_price;bm[r.brand].prf+=r.profit;bm[r.brand].mars.push(r.profit_margin);});
+  const tb=document.getElementById('brand-body');
+  const ent=Object.entries(bm).sort((a,b)=>b[1].rev-a[1].rev);
+  tb.innerHTML=ent.length?ent.map(([br,d])=>`<tr><td style="font-weight:700">${br}</td><td>${d.cnt}</td><td style="font-weight:600">${fmt.inr(d.rev)}</td><td style="color:var(--green);font-weight:600">${fmt.inr(d.prf)}</td><td style="color:var(--accent)">${(d.mars.reduce((a,b)=>a+b,0)/d.mars.length).toFixed(2)}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--muted)">No data</td></tr>';
+}
+
+function go(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  document.querySelectorAll('.nav-i').forEach(n=>{if(n.getAttribute('onclick')?.includes(id))n.classList.add('on');});
+  const T={entry:'New Sale Entry',records:'My Records',summary:'My Summary'};
+  document.getElementById('tb-title').textContent=T[id]||id;
+  if(id==='records'||id==='summary') loadRecords();
+}
+
+preview();
+</script>
+</body>
+</html>
