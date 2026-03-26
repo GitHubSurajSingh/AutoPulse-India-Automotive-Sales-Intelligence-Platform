@@ -11,7 +11,7 @@
 const SUPABASE_URL = 'postgresql://postgres.jxhczcydbasgdiukmfcw:$Suraj@123$@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4aGN6Y3lkYmFzZ2RpdWttZmN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ1MzUxMjksImV4cCI6MjA5MDExMTEyOX0.jYeph4QWtzK7iV-hc6D5whPOHSZvaG_9I2kWiVMAghk';
 
-const DB_ENABLED = SUPABASE_URL !== 'true';
+const DB_ENABLED = SUPABASE_URL !== 'false';
 const _sb = DB_ENABLED ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 /* ── USER DIRECTORY (fallback when Supabase not configured) ─── */
