@@ -232,8 +232,30 @@ tbody tr:last-child td{border-bottom:none}
             <div class="f"><label>Insurance <small>[auto · 3.2%]</small></label><input id="f-ins" readonly></div>
             <div class="f"><label>Cost Price <small></small></label><input type="number" id="f-cp" placeholder="0" oninput="calc()"></div>
             <div class="f"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly></div>
+           <!-- Added an input for the base price (ex+) to trigger the calculation -->
+            <div class="f"><label>Ex-Showroom Price (ex+)</label><input type="number" id="f-ex-price" class="f-input" placeholder="Enter base price"></div>
             <div class="f"><label>Profit <small>[auto · ex+ 30%acc-disc-cp]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto · profit/(ex+ 30%acc-disc-cp)*100]</small></label><input id="f-margin" readonly class="f-profit"></div>
+            <script>document.getElementById('f-ex-price').addEventListener('input', function() {const exPrice = parseFloat(this.value) || 0;
+    
+    // Formula 1: Profit = ex+ * 0.30
+    // (Interpreting "30%acc-disc-cp" as a 30% multiplier based on the '·' symbol)
+    const profit = exPrice * 0.30;
+    
+    // Formula 2: Margin = Profit / (Total Cost) * 100
+    // Based on your label, the cost base is (ex+ * 0.30)
+    const costBase = exPrice * 0.30;
+    let margin = 0;
+    if (costBase > 0) {
+        margin = (profit / costBase) * 100;
+    }
+
+    // Update the readonly fields
+    document.getElementById('f-profit').value = profit.toFixed(2);
+    document.getElementById('f-margin').value = margin.toFixed(2) + '%';
+});
+</script>
+
             <div class="form-actions">
               <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
               <button class="btn-save" id="save-btn" onclick="submitSale()">
