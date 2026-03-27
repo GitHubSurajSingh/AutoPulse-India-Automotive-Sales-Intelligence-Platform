@@ -381,30 +381,74 @@ function calc(){
   preview();
 }
 
-function preview(){
-  const ex=parseFloat(document.getElementById('f-ex').value)||0;
-  const ac=parseFloat(document.getElementById('f-acc').value)||0;
-  const di=parseFloat(document.getElementById('f-disc').value)||0;
-  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
-  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
-  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
-  const br=document.getElementById('f-brand').value, mo=document.getElementById('f-model').value;
-  const fu=document.getElementById('f-fuel').value, tr=document.getElementById('f-trans').value;
-  const s=(id,v)=>document.getElementById(id).textContent=v;
-  s('pv-inv','INV'+(parseInt(localStorage.getItem('ap_inv_'+ME.agency)||'11000')+1));
-  s('pv-date',document.getElementById('f-date').value||'—');
-  s('pv-sp',document.getElementById('f-sp').value||'—');
-  s('pv-ct',document.getElementById('f-ct').value||'—');
-  s('pv-loc',(ME.city||'—')+', '+(ME.state||''));
-  s('pv-veh',br&&mo?br+' '+mo:br||'—');
-  s('pv-fuel',[fu,tr].filter(Boolean).join(' · ')||'—');
-  s('pv-ex',ex>0?fmt.inr(ex):'—');
-  s('pv-rtoi',(rto+ins)>0?fmt.inr(rto+ins):'—');
-  s('pv-acc',ac>0?fmt.inr(ac):'—');
-  s('pv-disc',di>0?'− '+fmt.inr(di):'—');
-  s('pv-final',fin>0?fmt.inr(fin):'₹ —');
-  s('pv-profit',prf>0?fmt.inr(prf):'₹ —');
-  s('pv-margin',fin>0?mar+' %':'—%');
+function calc() {
+  const ex = parseFloat(document.getElementById('f-ex').value) || 0;
+  const ac = parseFloat(document.getElementById('f-acc').value) || 0;
+  const di = parseFloat(document.getElementById('f-disc').value) || 0;
+  const cp = parseFloat(document.getElementById('f-cp').value) || 0;
+
+  // Auto calculations
+  const rto = Math.round(ex * 0.105);
+  const ins = Math.round(ex * 0.032);
+
+  const final = ex + rto + ins + ac - di;
+
+  const profit = final - cp;
+  const margin = final > 0 ? ((profit / final) * 100).toFixed(2) : 0;
+
+  // Update form fields
+  document.getElementById('f-rto').value = rto;
+  document.getElementById('f-ins').value = ins;
+  document.getElementById('f-final').value = final;
+  document.getElementById('f-profit').value = profit;
+  document.getElementById('f-margin').value = margin;
+
+  // Update preview
+  preview();
+}
+
+function preview() {
+  const ex = parseFloat(document.getElementById('f-ex').value) || 0;
+  const ac = parseFloat(document.getElementById('f-acc').value) || 0;
+  const di = parseFloat(document.getElementById('f-disc').value) || 0;
+  const cp = parseFloat(document.getElementById('f-cp').value) || 0;
+
+  const rto = Math.round(ex * 0.105);
+  const ins = Math.round(ex * 0.032);
+
+  const fin = ex + rto + ins + ac - di;
+
+  const prf = fin - cp;
+  const mar = fin > 0 ? ((prf / fin) * 100).toFixed(2) : 0;
+
+  const br = document.getElementById('f-brand').value;
+  const mo = document.getElementById('f-model').value;
+  const fu = document.getElementById('f-fuel').value;
+  const tr = document.getElementById('f-trans').value;
+
+  const s = (id, v) => document.getElementById(id).textContent = v;
+
+  // Invoice + basic info
+  s('pv-inv', 'INV' + (parseInt(localStorage.getItem('ap_inv_' + ME.agency) || '11000') + 1));
+  s('pv-date', document.getElementById('f-date').value || '—');
+  s('pv-sp', document.getElementById('f-sp').value || '—');
+  s('pv-ct', document.getElementById('f-ct').value || '—');
+  s('pv-loc', (ME.city || '—') + ', ' + (ME.state || ''));
+
+  // Vehicle
+  s('pv-veh', br && mo ? br + ' ' + mo : br || '—');
+  s('pv-fuel', [fu, tr].filter(Boolean).join(' · ') || '—');
+
+  // Pricing
+  s('pv-ex', ex > 0 ? fmt.inr(ex) : '—');
+  s('pv-rtoi', (rto + ins) > 0 ? fmt.inr(rto + ins) : '—');
+  s('pv-acc', ac > 0 ? fmt.inr(ac) : '—');
+  s('pv-disc', di > 0 ? '− ' + fmt.inr(di) : '—');
+
+  // Final numbers
+  s('pv-final', fin > 0 ? fmt.inr(fin) : '₹ —');
+  s('pv-profit', prf ? fmt.inr(prf) : '₹ —');
+  s('pv-margin', fin > 0 ? mar + ' %' : '—%');
 }
 
 function resetForm(){
