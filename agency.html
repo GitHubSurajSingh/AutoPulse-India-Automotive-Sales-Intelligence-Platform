@@ -466,35 +466,45 @@ function resetForm(){
 }
 
 async function submitSale(){
-  const req=['f-sp','f-ct','f-brand','f-model','f-fuel','f-trans','f-date','f-ex'];
-  let ok=true;
-  req.forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.classList.add('f-err');ok=false;}else el.classList.remove('f-err');});
-  if(!ok){Toast.show('warn','Missing fields','Please fill all required fields.');return;}
+  const ex = parseFloat(document.getElementById('f-ex').value) || 0;
+  const ac = parseFloat(document.getElementById('f-acc').value) || 0;
+  const di = parseFloat(document.getElementById('f-disc').value) || 0;
+  const cp = parseFloat(document.getElementById('f-cp').value) || 0;
 
-  const ex=parseFloat(document.getElementById('f-ex').value)||0;
-  const ac=parseFloat(document.getElementById('f-acc').value)||0;
-  const di=parseFloat(document.getElementById('f-disc').value)||0;
-  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
-  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
-  const mar=parseFloat(fin>0?((prf/fin)*100).toFixed(2):0);
+  const rto = Math.round(ex * 0.105);
+  const ins = Math.round(ex * 0.032);
 
-  const rec={
-    invoice_id:InvCounter.next(ME.agency),
-    sale_date:document.getElementById('f-date').value,
-    salesperson:document.getElementById('f-sp').value,
-    customer_name:document.getElementById('f-cn').value||null,
-    customer_type:document.getElementById('f-ct').value,
-    state:ME.state, city:ME.city,
-    brand:document.getElementById('f-brand').value,
-    model:document.getElementById('f-model').value,
-    segment:document.getElementById('f-seg').value,
-    fuel_type:document.getElementById('f-fuel').value,
-    transmission:document.getElementById('f-trans').value,
-    exshowroom_price:ex, rto, insurance:ins, accessories:ac, discount:di,
-    final_sale_price:fin, cost_price:cst, profit:prf, profit_margin:mar,
-    agency_id:ME.agency, agency_name:ME.name,
-    submitted_at:new Date().toISOString(),
+  const fin = ex + rto + ins + ac - di;
+  const prf = fin - cp;
+  const mar = fin > 0 ? ((prf / fin) * 100).toFixed(2) : 0;
+
+  const rec = {
+    invoice_id: InvCounter.next(ME.agency),
+    sale_date: document.getElementById('f-date').value,
+    salesperson: document.getElementById('f-sp').value,
+    customer_type: document.getElementById('f-ct').value,
+    brand: document.getElementById('f-brand').value,
+    model: document.getElementById('f-model').value,
+    segment: document.getElementById('f-seg').value,
+    fuel_type: document.getElementById('f-fuel').value,
+    transmission: document.getElementById('f-trans').value,
+    exshowroom_price: ex,
+    rto,
+    insurance: ins,
+    accessories: ac,
+    discount: di,
+    final_sale_price: fin,
+    cost_price: cp,
+    profit: prf,
+    profit_margin: mar,
+    agency_id: ME.agency,
+    agency_name: ME.name,
+    submitted_at: new Date().toISOString()
   };
+
+  await DB.insertSale(rec);
+  resetForm();
+}
 
   const btn=document.getElementById('save-btn'), sp=document.getElementById('save-sp');
   btn.disabled=true; sp.style.display='inline-block';
