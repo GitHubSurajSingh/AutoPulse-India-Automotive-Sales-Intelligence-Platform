@@ -230,10 +230,18 @@ tbody tr:last-child td{border-bottom:none}
             <div class="f"><label>Discount (₹)</label><input type="number" id="f-disc" placeholder="0" oninput="calc()"></div>
             <div class="f"><label>RTO <small>[auto · 10.5%]</small></label><input id="f-rto" readonly></div>
             <div class="f"><label>Insurance <small>[auto · 3.2%]</small></label><input id="f-ins" readonly></div>
-            <div class="f"><label>Cost Price <small>[auto · 87% of final]</small></label><input id="f-cost" readonly></div>
-            <div class="f full"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly class="f-total"></div>
-            <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
+            <div class="f"><label>Cost Price <small></small></label><input type="number" id="f-cp" placeholder="0" oninput="calc()"></div>
+            <div class="f"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly></div>
+           <!-- Added an input for the base price (ex+) to trigger the calculation -->
+           <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
+            
+  set('f-final', finalPrice ? finalPrice.toLocaleString('en-IN') : '');
+  set('f-profit', profit ? profit.toLocaleString('en-IN') : '');
+  set('f-margin', revenue ? margin + ' %' : '');
+
+  preview();
+}
             <div class="form-actions">
               <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
               <button class="btn-save" id="save-btn" onclick="submitSale()">
@@ -348,26 +356,34 @@ function fillModels(){
 function fillSeg(){ document.getElementById('f-seg').value=SEGS[document.getElementById('f-model').value]||''; }
 
 function calc(){
-  const ex=parseFloat(document.getElementById('f-ex').value)||0;
-  const ac=parseFloat(document.getElementById('f-acc').value)||0;
-  const di=parseFloat(document.getElementById('f-disc').value)||0;
+  const ex = parseFloat(document.getElementById('f-ex').value) || 0;
+  const ac = parseFloat(document.getElementById('f-acc').value) || 0;
+  const di = parseFloat(document.getElementById('f-disc').value) || 0;
+  const cp = parseFloat(document.getElementById('f-cp').value) || 0;
 
-  const rto=Math.round(ex*0.105);
-  const ins=Math.round(ex*0.032);
-  const fin=ex+rto+ins+ac-di;
-  const cst=Math.round(fin*0.87);
+  // Govt charges
+  const rto = Math.round(ex * 0.105);
+  const ins = Math.round(ex * 0.032);
 
+  // Final customer price
+  const finalPrice = ex + rto + ins + ac - di;
+
+  // Business revenue logic
   const revenue = ex + (0.30 * ac);
-  const prf = revenue - cst - di;
-  const mar = revenue>0 ? ((prf/revenue)*100).toFixed(2) : '0.00';
 
-  const set=(id,v)=>document.getElementById(id).value=v||'';
-  set('f-rto',    rto>0?rto.toLocaleString('en-IN'):'');
-  set('f-ins',    ins>0?ins.toLocaleString('en-IN'):'');
-  set('f-cost',   cst>0?cst.toLocaleString('en-IN'):'');
-  set('f-final',  fin>0?fin.toLocaleString('en-IN'):'');
-  set('f-profit', prf!==0?prf.toLocaleString('en-IN'):'');
-  set('f-margin', revenue>0?mar+' %':'');
+  // Profit
+  const profit = revenue - cp - di;
+
+  // Margin %
+  const margin = revenue > 0 ? ((profit / revenue) * 100) : 0;
+
+  // Set values
+  document.getElementById('f-rto').value = rto ? rto.toLocaleString('en-IN') : '';
+  document.getElementById('f-ins').value = ins ? ins.toLocaleString('en-IN') : '';
+  document.getElementById('f-final').value = finalPrice ? finalPrice.toLocaleString('en-IN') : '';
+  document.getElementById('f-profit').value = profit ? profit.toLocaleString('en-IN') : '';
+  document.getElementById('f-margin').value = revenue ? margin.toFixed(2) + ' %' : '';
+
   preview();
 }
 
@@ -375,14 +391,9 @@ function preview(){
   const ex=parseFloat(document.getElementById('f-ex').value)||0;
   const ac=parseFloat(document.getElementById('f-acc').value)||0;
   const di=parseFloat(document.getElementById('f-disc').value)||0;
-  const rto=Math.round(ex*0.105), ins=Math.round(ex*0.032);
-  const fin=ex+rto+ins+ac-di;
-  const cst=Math.round(fin*0.87);
-
-  const revenue = ex + (0.30 * ac);
-  const prf = revenue - cst - di;
-  const mar = revenue>0 ? ((prf/revenue)*100).toFixed(2) : '0.00';
-
+  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
   const br=document.getElementById('f-brand').value, mo=document.getElementById('f-model').value;
   const fu=document.getElementById('f-fuel').value, tr=document.getElementById('f-trans').value;
   const s=(id,v)=>document.getElementById(id).textContent=v;
@@ -399,7 +410,7 @@ function preview(){
   s('pv-disc',di>0?'− '+fmt.inr(di):'—');
   s('pv-final',fin>0?fmt.inr(fin):'₹ —');
   s('pv-profit',prf>0?fmt.inr(prf):'₹ —');
-  s('pv-margin',revenue>0?mar+' %':'—%');
+  s('pv-margin',fin>0?mar+' %':'—%');
 }
 
 function resetForm(){
@@ -422,13 +433,9 @@ async function submitSale(){
   const ex=parseFloat(document.getElementById('f-ex').value)||0;
   const ac=parseFloat(document.getElementById('f-acc').value)||0;
   const di=parseFloat(document.getElementById('f-disc').value)||0;
-  const rto=Math.round(ex*0.105), ins=Math.round(ex*0.032);
-  const fin=ex+rto+ins+ac-di;
-  const cst=Math.round(fin*0.87);
-
-  const revenue = ex + (0.30 * ac);
-  const prf = revenue - cst - di;
-  const mar = revenue>0 ? parseFloat(((prf/revenue)*100).toFixed(2)) : 0;
+  const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=parseFloat(fin>0?((prf/fin)*100).toFixed(2):0);
 
   const rec={
     invoice_id:InvCounter.next(ME.agency),
