@@ -236,13 +236,7 @@ tbody tr:last-child td{border-bottom:none}
            <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
             
-  set('f-final', finalPrice ? finalPrice.toLocaleString('en-IN') : '');
-  set('f-profit', profit ? profit.toLocaleString('en-IN') : '');
-  set('f-margin', revenue ? margin + ' %' : '');
-
-  preview();
-}
-            <div class="form-actions">
+        <div class="form-actions">
               <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
               <button class="btn-save" id="save-btn" onclick="submitSale()">
                 <div class="sp" id="save-sp"></div> Save Sale →
