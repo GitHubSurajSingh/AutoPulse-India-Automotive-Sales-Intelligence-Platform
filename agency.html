@@ -233,7 +233,7 @@ tbody tr:last-child td{border-bottom:none}
             <div class="f"><label>Cost Price <small></small></label><input type="number" id="f-cp" placeholder="0" oninput="calc()"></div>
             <div class="f"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly></div>
            <!-- Added an input for the base price (ex+) to trigger the calculation -->
-           <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
+           <div class="f"><label>Profit <small>[auto · ex + 30%acc − disc-cp]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
              <script>document.getElementById('f-ex-price').addEventListener('input', function() {const exPrice = parseFloat(this.value) || 0;
               document.getElementById('f-profit').value = profit.toFixed(2);
