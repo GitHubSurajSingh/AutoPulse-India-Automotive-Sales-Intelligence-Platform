@@ -1,5 +1,5 @@
 -- ================================================================
---  AutoPulse — Supabase SQL Schema (Enhanced RLS + Car Variants)
+--  AutoPulse — Supabase SQL Schema (Enhanced RLS)
 --  Run this entire file in: Supabase Dashboard → SQL Editor → Run
 -- ================================================================
 
@@ -29,62 +29,10 @@ INSERT INTO users (username, password, role, name, agency, state, city) VALUES
   ('bpl_auto',     'Bpl@2024',    'agency',  'Bhopal AutoWorld',       'bpl_auto',    'Madhya Pradesh',  'Bhopal')
 ON CONFLICT (username) DO NOTHING;
 
--- Create agencies table for admin management
-CREATE TABLE IF NOT EXISTS agencies (
-  id            SERIAL PRIMARY KEY,
-  agency_id     TEXT UNIQUE NOT NULL,
-  name          TEXT NOT NULL,
-  state         TEXT NOT NULL,
-  city          TEXT NOT NULL,
-  username      TEXT UNIQUE NOT NULL,
-  password      TEXT NOT NULL,
-  contact_name  TEXT,
-  contact_phone TEXT,
-  created_at    TIMESTAMPTZ DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ DEFAULT NOW()
-);
 
--- Insert existing agencies
-INSERT INTO agencies (agency_id, name, state, city, username, password, contact_name) VALUES
-  ('mum_hub',     'Mumbai AutoHub',      'Maharashtra', 'Mumbai',      'mum_hub',     'Mum@2024',  'Mumbai Hub'),
-  ('pune_motors', 'Pune Motors',         'Maharashtra', 'Pune',        'pune_motors', 'Pune@2024', 'Pune Motors'),
-  ('del_elite',   'Delhi Elite Cars',    'Delhi',       'New Delhi',   'del_elite',   'Del@2024',  'Delhi Elite'),
-  ('blr_drive',   'Bangalore DriveZone', 'Karnataka',   'Bangalore',   'blr_drive',   'Blr@2024',  'Bangalore Drive'),
-  ('bpl_auto',    'Bhopal AutoWorld',    'Madhya Pradesh', 'Bhopal',    'bpl_auto',    'Bpl@2024',  'Bhopal Auto')
-ON CONFLICT (agency_id) DO NOTHING;
-
-
--- ── 2. CAR VARIANTS TABLE (NEW) ────────────────────────────────
---  Stores car model information with manufacturing year and cost price
---  Agencies can upload CSV with their specific variant costs
-CREATE TABLE IF NOT EXISTS car_variants (
-  id                BIGSERIAL PRIMARY KEY,
-  brand             TEXT NOT NULL,
-  model             TEXT NOT NULL,
-  segment           TEXT,
-  year              INTEGER,
-  variant           TEXT,
-  fuel_type         TEXT,
-  transmission      TEXT,
-  exshowroom_price  NUMERIC(14,2) NOT NULL,
-  cost_price        NUMERIC(14,2) NOT NULL,
-  agency_id         TEXT,
-  created_at        TIMESTAMPTZ DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(brand, model, year, variant, fuel_type, transmission)
-);
-
--- Index for quick lookups
-CREATE INDEX IF NOT EXISTS idx_car_variants_brand     ON car_variants(brand);
-CREATE INDEX IF NOT EXISTS idx_car_variants_model     ON car_variants(model);
-CREATE INDEX IF NOT EXISTS idx_car_variants_agency    ON car_variants(agency_id);
-CREATE INDEX IF NOT EXISTS idx_car_variants_lookup    ON car_variants(brand, model, year, fuel_type, transmission);
-
-
--- ── 3. SALES TABLE ──────────────────────────────────────────────
+-- ── 2. SALES TABLE ──────────────────────────────────────────────
 --  Stores all car sales submitted by agency staff.
---  Profit calculation: exshowroom_price - cost_price + (30% of accessories)
---  RTO and Insurance are NOT included in profit calculation
+--  The BI dashboard merges this with the pre-cleaned 10,000-record seed dataset.
 CREATE TABLE IF NOT EXISTS sales (
   id                BIGSERIAL PRIMARY KEY,
   invoice_id        TEXT UNIQUE NOT NULL,
@@ -97,8 +45,6 @@ CREATE TABLE IF NOT EXISTS sales (
   brand             TEXT NOT NULL,
   model             TEXT NOT NULL,
   segment           TEXT,
-  year              INTEGER,
-  variant           TEXT,
   fuel_type         TEXT,
   transmission      TEXT,
   exshowroom_price  NUMERIC(14,2),
@@ -107,7 +53,7 @@ CREATE TABLE IF NOT EXISTS sales (
   accessories       NUMERIC(14,2),
   discount          NUMERIC(14,2),
   final_sale_price  NUMERIC(14,2) NOT NULL,
-  cost_price        NUMERIC(14,2) NOT NULL,
+  cost_price        NUMERIC(14,2),
   profit            NUMERIC(14,2) NOT NULL,
   profit_margin     NUMERIC(7,4),
   agency_id         TEXT NOT NULL,
@@ -121,15 +67,12 @@ CREATE INDEX IF NOT EXISTS idx_sales_date      ON sales(sale_date);
 CREATE INDEX IF NOT EXISTS idx_sales_state     ON sales(state);
 CREATE INDEX IF NOT EXISTS idx_sales_brand     ON sales(brand);
 CREATE INDEX IF NOT EXISTS idx_sales_submitted ON sales(submitted_at DESC);
-CREATE INDEX IF NOT EXISTS idx_sales_year      ON sales(year);
 
 
--- ── 4. ROW LEVEL SECURITY ────────────────────────────────────────
+-- ── 3. ROW LEVEL SECURITY ────────────────────────────────────────
 
--- Enable RLS on all tables
+-- Enable RLS on both tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE agencies ENABLE ROW LEVEL SECURITY;
-ALTER TABLE car_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
 -- ────────────────────────────────────────────────────────────────
@@ -141,80 +84,52 @@ DROP POLICY IF EXISTS "users_login_read" ON users;
 CREATE POLICY "users_login_read" ON users
   FOR SELECT USING (true);
 
--- Prevent direct updates/deletes from frontend
+-- Prevent direct updates/deletes from frontend (optional - add later for admin panel)
 DROP POLICY IF EXISTS "users_no_write" ON users;
 CREATE POLICY "users_no_write" ON users
   FOR INSERT WITH CHECK (false);
 
--- ────────────────────────────────────────────────────────────────
--- AGENCIES TABLE POLICIES
--- ────────────────────────────────────────────────────────────────
-
--- Admins can READ, INSERT, UPDATE agencies
-DROP POLICY IF EXISTS "agencies_admin_all" ON agencies;
-CREATE POLICY "agencies_admin_all" ON agencies
-  FOR ALL USING (true) WITH CHECK (true);
 
 -- ────────────────────────────────────────────────────────────────
--- CAR VARIANTS TABLE POLICIES
+-- SALES TABLE POLICIES (Critical for multi-device sync)
 -- ────────────────────────────────────────────────────────────────
 
--- Anyone can READ all variants
-DROP POLICY IF EXISTS "car_variants_read_all" ON car_variants;
-CREATE POLICY "car_variants_read_all" ON car_variants
-  FOR SELECT USING (true);
-
--- Agencies can INSERT/UPDATE their own variants
-DROP POLICY IF EXISTS "car_variants_write_own" ON car_variants;
-CREATE POLICY "car_variants_write_own" ON car_variants
-  FOR INSERT WITH CHECK (true);
-
-DROP POLICY IF EXISTS "car_variants_update_own" ON car_variants;
-CREATE POLICY "car_variants_update_own" ON car_variants
-  FOR UPDATE USING (true) WITH CHECK (true);
-
--- ────────────────────────────────────────────────────────────────
--- SALES TABLE POLICIES
--- ────────────────────────────────────────────────────────────────
-
--- ANYONE can INSERT a new sale (agency submission)
+-- Policy 1: ANYONE can INSERT a new sale (agency submission)
 DROP POLICY IF EXISTS "sales_insert_any" ON sales;
 CREATE POLICY "sales_insert_any" ON sales
   FOR INSERT WITH CHECK (true);
 
--- ANYONE can READ all sales
+-- Policy 2: ANYONE can READ all sales
+--           (Managers/Admins see all data, Agencies see own data in app logic)
 DROP POLICY IF EXISTS "sales_read_all" ON sales;
 CREATE POLICY "sales_read_all" ON sales
   FOR SELECT USING (true);
 
+-- Optional: If you want to enforce agency_id restrictions at database level
+--           (Advanced - uncomment if needed)
+-- DROP POLICY IF EXISTS "sales_read_own" ON sales;
+-- CREATE POLICY "sales_read_own" ON sales
+--   FOR SELECT USING (
+--     auth.jwt()->>'role' = 'admin' OR
+--     auth.jwt()->>'role' = 'manager' OR
+--     auth.jwt()->>'role' = 'govt' OR
+--     auth.jwt()->>'agency' = agency_id
+--   );
 
--- ── 5. HELPFUL VIEWS ────────────────────────────────────────────
 
--- Monthly aggregates for BI trend chart (UPDATED with new profit calc)
+-- ── 4. HELPFUL VIEWS ────────────────────────────────────────────
+
+-- Monthly aggregates for BI trend chart
 CREATE OR REPLACE VIEW sales_monthly AS
 SELECT
   TO_CHAR(sale_date, 'YYYY-MM')   AS month,
-  EXTRACT(YEAR FROM sale_date)::INT AS year,
-  EXTRACT(MONTH FROM sale_date)::INT AS month_num,
   COUNT(*)                         AS units,
   ROUND(SUM(final_sale_price)::NUMERIC, 2) AS total_revenue,
   ROUND(SUM(profit)::NUMERIC, 2)           AS total_profit,
   ROUND(AVG(profit_margin)::NUMERIC, 4)    AS avg_margin
 FROM sales
-GROUP BY 1, 2, 3
-ORDER BY 2 DESC, 3 DESC;
-
--- Year-wise aggregates
-CREATE OR REPLACE VIEW sales_by_year AS
-SELECT
-  EXTRACT(YEAR FROM sale_date)::INT AS year,
-  COUNT(*)                          AS units,
-  ROUND(SUM(final_sale_price)::NUMERIC, 2) AS total_revenue,
-  ROUND(SUM(profit)::NUMERIC, 2)           AS total_profit,
-  ROUND(AVG(profit_margin)::NUMERIC, 4)    AS avg_margin
-FROM sales
 GROUP BY 1
-ORDER BY 1 DESC;
+ORDER BY 1;
 
 -- Brand aggregates
 CREATE OR REPLACE VIEW sales_by_brand AS
@@ -254,16 +169,10 @@ GROUP BY agency_id, agency_name
 ORDER BY total_revenue DESC;
 
 
--- ── 6. VERIFICATION QUERIES (Run these to test) ─────────────────
+-- ── 5. VERIFICATION QUERIES (Run these to test) ─────────────────
 
 -- Check all sales in database
 -- SELECT COUNT(*) as total_sales FROM sales;
-
--- Check car variants
--- SELECT * FROM car_variants LIMIT 10;
-
--- Check agencies
--- SELECT * FROM agencies;
 
 -- Check by agency
 -- SELECT agency_id, agency_name, COUNT(*) as count FROM sales GROUP BY agency_id, agency_name;
