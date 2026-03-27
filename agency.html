@@ -139,15 +139,6 @@ tbody tr:last-child td{border-bottom:none}
 /* EMPTY */
 .empty{text-align:center;padding:56px 20px;color:var(--muted)}
 .empty-ico{font-size:44px;opacity:.25;margin-bottom:12px}
-
-/* UPLOAD SECTION */
-.upload-section{display:flex;gap:12px;align-items:flex-end;margin-bottom:20px}
-.upload-input{position:relative;flex:1;max-width:400px}
-.upload-input input[type="file"]{display:none}
-.upload-label{display:inline-block;background:var(--accent);color:#fff;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:all .18s}
-.upload-label:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,77,255,.3)}
-.upload-info{font-size:11px;color:var(--muted);margin-top:6px}
-.upload-progress{display:none;font-size:11px;color:var(--green);margin-top:4px}
 </style>
 </head>
 <body>
@@ -164,8 +155,7 @@ tbody tr:last-child td{border-bottom:none}
   </div>
   <nav class="nav">
     <div class="nav-s">My Portal</div>
-    <div class="nav-i on" onclick="go('variants')"><span>🚗</span> Car Variants</div>
-    <div class="nav-i" onclick="go('entry')"><span>＋</span> New Sale Entry</div>
+    <div class="nav-i on" onclick="go('entry')"><span>＋</span> New Sale Entry</div>
     <div class="nav-i" onclick="go('records')"><span>📋</span> My Records</div>
     <div class="nav-i" onclick="go('summary')"><span>📊</span> My Summary</div>
   </nav>
@@ -177,50 +167,18 @@ tbody tr:last-child td{border-bottom:none}
 
 <div class="main">
   <div class="topbar">
-    <div class="tb-title" id="tb-title">Car Variants</div>
+    <div class="tb-title" id="tb-title">New Sale Entry</div>
     <div class="tb-right">
       <span class="chip ch-agency">Agency</span>
       <span class="chip" id="db-chip">—</span>
     </div>
   </div>
 
-  <!-- ── CAR VARIANTS ── -->
-  <div class="page on" id="page-variants">
-    <div class="ph">
-      <h1>Car Variants Database</h1>
-      <p>Upload your car models with ex-showroom and cost prices. This determines profit calculations for each sale.</p>
-    </div>
-    <div class="card">
-      <div class="card-body">
-        <div class="card-title">Upload Variants CSV</div>
-        <div class="card-sub">CSV format: Brand, Model, Segment, Year, Variant, Fuel Type, Transmission, Ex-Showroom Price, Cost Price</div>
-        <div class="upload-section">
-          <div class="upload-input">
-            <label for="csv-upload" class="upload-label">📥 Choose CSV File</label>
-            <input type="file" id="csv-upload" accept=".csv" onchange="handleCSVUpload(event)">
-            <div class="upload-info">Maximum 5MB · CSV only</div>
-            <div class="upload-progress" id="upload-progress"></div>
-          </div>
-          <button class="btn-save" id="upload-btn" onclick="uploadVariants()" style="display:none">Upload Variants</button>
-        </div>
-        <div id="csv-preview" style="margin-top:20px;display:none">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:10px" id="preview-info"></div>
-          <div class="tbl-wrap">
-            <table style="font-size:11px">
-              <thead id="preview-head"></thead>
-              <tbody id="preview-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ── ENTRY ── -->
-  <div class="page" id="page-entry">
+  <div class="page on" id="page-entry">
     <div class="ph">
       <h1>Record a New Sale</h1>
-      <p>Fill vehicle and customer details. Profit is calculated from uploaded variant data.</p>
+      <p>Fill vehicle and customer details. Pricing is auto-computed from ex-showroom price.</p>
     </div>
     <div class="form-layout">
       <div class="card">
@@ -253,14 +211,7 @@ tbody tr:last-child td{border-bottom:none}
                 <option value="">— Select Model —</option>
               </select>
             </div>
-            <div class="f"><label>Year</label>
-              <select id="f-year" onchange="preview()">
-                <option value="">— Select Year —</option>
-                <option>2024</option><option>2025</option><option>2026</option>
-              </select>
-            </div>
             <div class="f"><label>Segment <small>[auto]</small></label><input id="f-seg" readonly></div>
-            <div class="f"><label>Variant <small>(optional)</small></label><input id="f-variant" placeholder="e.g. SX, ZX Turbo" oninput="preview()"></div>
             <div class="f"><label>Fuel Type</label>
               <select id="f-fuel" onchange="preview()">
                 <option value="">— Select —</option>
@@ -274,14 +225,14 @@ tbody tr:last-child td{border-bottom:none}
               </select>
             </div>
             <div class="sec">Pricing</div>
-            <div class="f"><label>Ex-Showroom Price (₹) <small>[from variant]</small></label><input type="number" id="f-ex" placeholder="Auto-filled from variant" readonly></div>
-            <div class="f"><label>Cost Price (₹) <small>[from variant]</small></label><input type="number" id="f-cost" placeholder="Auto-filled from variant" readonly></div>
+            <div class="f"><label>Ex-Showroom Price (₹)</label><input type="number" id="f-ex" placeholder="e.g. 1400000" oninput="calc()"></div>
             <div class="f"><label>Accessories (₹)</label><input type="number" id="f-acc" placeholder="0" oninput="calc()"></div>
             <div class="f"><label>Discount (₹)</label><input type="number" id="f-disc" placeholder="0" oninput="calc()"></div>
-            <div class="f"><label>RTO <small>[10.5% of ex-showroom]</small></label><input id="f-rto" readonly></div>
-            <div class="f"><label>Insurance <small>[3.2% of ex-showroom]</small></label><input id="f-ins" readonly></div>
-            <div class="f full"><label>Final Sale Price <small>[ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly class="f-total"></div>
-            <div class="f"><label>Profit <small>[ex − cost + (30% acc)]</small></label><input id="f-profit" readonly class="f-profit"></div>
+            <div class="f"><label>RTO <small>[auto · 10.5%]</small></label><input id="f-rto" readonly></div>
+            <div class="f"><label>Insurance <small>[auto · 3.2%]</small></label><input id="f-ins" readonly></div>
+            <div class="f"><label>Cost Price <small>[auto · 87% of final]</small></label><input id="f-cost" readonly></div>
+            <div class="f full"><label>Final Sale Price <small>[auto · ex + rto + ins + acc − disc]</small></label><input id="f-final" readonly class="f-total"></div>
+            <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
             <div class="form-actions">
               <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
@@ -333,7 +284,7 @@ tbody tr:last-child td{border-bottom:none}
         <table>
           <thead><tr>
             <th>Invoice</th><th>Date</th><th>Salesperson</th><th>Customer Type</th>
-            <th>Brand</th><th>Model</th><th>Year</th><th>Segment</th><th>Fuel</th><th>Trans</th>
+            <th>Brand</th><th>Model</th><th>Segment</th><th>Fuel</th><th>Trans</th>
             <th>Final Price</th><th>Profit</th><th>Margin</th>
           </tr></thead>
           <tbody id="rec-body"></tbody>
@@ -386,8 +337,6 @@ const SEGS = {
   Nexon:'SUV',Punch:'Hatchback','Innova Crysta':'MPV',
 };
 
-let uploadedVariants = [];
-
 function fillModels(){
   const el=document.getElementById('f-model');
   el.innerHTML='<option value="">— Select Model —</option>';
@@ -395,116 +344,26 @@ function fillModels(){
     const o=document.createElement('option');o.textContent=o.value=m;el.appendChild(o);
   });
   document.getElementById('f-seg').value='';
-  document.getElementById('f-ex').value='';
-  document.getElementById('f-cost').value='';
 }
 function fillSeg(){ document.getElementById('f-seg').value=SEGS[document.getElementById('f-model').value]||''; }
 
-// CSV Upload Handler
-function handleCSVUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const csv = e.target.result;
-    const lines = csv.trim().split('\n');
-    if (lines.length < 2) { Toast.show('warn','Invalid CSV','At least header and one data row required'); return; }
-    
-    uploadedVariants = [];
-    const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
-    
-    for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      if (values.length < 9) continue;
-      
-      uploadedVariants.push({
-        brand: values[0],
-        model: values[1],
-        segment: values[2],
-        year: parseInt(values[3]) || new Date().getFullYear(),
-        variant: values[4],
-        fuel_type: values[5],
-        transmission: values[6],
-        exshowroom_price: parseFloat(values[7]) || 0,
-        cost_price: parseFloat(values[8]) || 0,
-        agency_id: ME.agency,
-      });
-    }
-    
-    if (uploadedVariants.length === 0) { Toast.show('warn','No Data','No valid records found in CSV'); return; }
-    
-    // Show preview
-    const preview = document.getElementById('csv-preview');
-    document.getElementById('preview-info').textContent = uploadedVariants.length + ' variant' + (uploadedVariants.length !== 1 ? 's' : '') + ' to upload';
-    document.getElementById('preview-head').innerHTML = '<tr><th>Brand</th><th>Model</th><th>Year</th><th>Fuel</th><th>Trans</th><th>Ex-Showroom</th><th>Cost</th></tr>';
-    document.getElementById('preview-body').innerHTML = uploadedVariants.map(v => `<tr>
-      <td>${v.brand}</td><td>${v.model}</td><td>${v.year}</td>
-      <td>${v.fuel_type}</td><td>${v.transmission}</td>
-      <td>${fmt.inr(v.exshowroom_price)}</td><td>${fmt.inr(v.cost_price)}</td>
-    </tr>`).join('');
-    preview.style.display = 'block';
-    document.getElementById('upload-btn').style.display = 'flex';
-  };
-  reader.readAsText(file);
-}
-
-async function uploadVariants() {
-  if (uploadedVariants.length === 0) { Toast.show('warn','No Data','Please upload a CSV first'); return; }
-  
-  const btn = document.getElementById('upload-btn');
-  btn.disabled = true;
-  
-  const res = await DB.insertCarVariants(uploadedVariants);
-  
-  btn.disabled = false;
-  if (res.ok) {
-    Toast.show('ok','Variants Uploaded!',uploadedVariants.length + ' variants saved successfully.');
-    document.getElementById('csv-upload').value = '';
-    document.getElementById('csv-preview').style.display = 'none';
-    document.getElementById('upload-btn').style.display = 'none';
-    uploadedVariants = [];
-  } else {
-    Toast.show('err','Upload Failed','Could not save variants. Please try again.');
-  }
-}
-
-async function calc(){
-  const brand = document.getElementById('f-brand').value;
-  const model = document.getElementById('f-model').value;
-  const year = parseInt(document.getElementById('f-year').value) || new Date().getFullYear();
-  const fuel = document.getElementById('f-fuel').value;
-  const trans = document.getElementById('f-trans').value;
-  const ac = parseFloat(document.getElementById('f-acc').value) || 0;
-  const di = parseFloat(document.getElementById('f-disc').value) || 0;
-  
-  // Fetch variant data
-  let ex = 0, cost = 0;
-  if (brand && model && year && fuel && trans) {
-    const variant = await DB.getCarVariant(brand, model, year, fuel, trans, ME.agency);
-    if (variant) {
-      ex = variant.exshowroom_price;
-      cost = variant.cost_price;
-      document.getElementById('f-ex').value = ex > 0 ? ex.toLocaleString('en-IN') : '';
-      document.getElementById('f-cost').value = cost > 0 ? cost.toLocaleString('en-IN') : '';
-    }
-  }
-  
-  const rto = Math.round(ex * 0.105);
-  const ins = Math.round(ex * 0.032);
-  const fin = ex + rto + ins + ac - di;
-  
-  // NEW PROFIT CALCULATION: profit = ex - cost + (0.30 * accessories)
-  const profitCalc = ProfitCalc.calculate(ex, cost, ac);
-  const prf = profitCalc.profit;
-  const mar = ProfitCalc.calculateMargin(prf, fin);
-  
+function calc(){
+  const ex=parseFloat(document.getElementById('f-ex').value)||0;
+  const ac=parseFloat(document.getElementById('f-acc').value)||0;
+  const di=parseFloat(document.getElementById('f-disc').value)||0;
+  const rto=Math.round(ex*.105);
+  const ins=Math.round(ex*.032);
+  const fin=ex+rto+ins+ac-di;
+  const cst=Math.round(fin*.87);
+  const prf=fin-cst;
+  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
   const set=(id,v)=>document.getElementById(id).value=v||'';
   set('f-rto',    rto>0?rto.toLocaleString('en-IN'):'');
   set('f-ins',    ins>0?ins.toLocaleString('en-IN'):'');
+  set('f-cost',   cst>0?cst.toLocaleString('en-IN'):'');
   set('f-final',  fin>0?fin.toLocaleString('en-IN'):'');
   set('f-profit', prf>0?prf.toLocaleString('en-IN'):'');
-  set('f-margin', fin>0?mar+'':'');
+  set('f-margin', fin>0?mar+' %':'');
   preview();
 }
 
@@ -512,14 +371,10 @@ function preview(){
   const ex=parseFloat(document.getElementById('f-ex').value)||0;
   const ac=parseFloat(document.getElementById('f-acc').value)||0;
   const di=parseFloat(document.getElementById('f-disc').value)||0;
-  const cost=parseFloat(document.getElementById('f-cost').value)||0;
   const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
-  const fin=ex+rto+ins+ac-di;
-  const profitCalc = ProfitCalc.calculate(ex, cost, ac);
-  const prf = profitCalc.profit;
-  const mar=fin>0?ProfitCalc.calculateMargin(prf, fin):'0';
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=fin>0?((prf/fin)*100).toFixed(2):0;
   const br=document.getElementById('f-brand').value, mo=document.getElementById('f-model').value;
-  const yr=document.getElementById('f-year').value;
   const fu=document.getElementById('f-fuel').value, tr=document.getElementById('f-trans').value;
   const s=(id,v)=>document.getElementById(id).textContent=v;
   s('pv-inv','INV'+(parseInt(localStorage.getItem('ap_inv_'+ME.agency)||'11000')+1));
@@ -527,7 +382,7 @@ function preview(){
   s('pv-sp',document.getElementById('f-sp').value||'—');
   s('pv-ct',document.getElementById('f-ct').value||'—');
   s('pv-loc',(ME.city||'—')+', '+(ME.state||''));
-  s('pv-veh',br&&mo?br+' '+mo+(yr?' '+yr:''):br||'—');
+  s('pv-veh',br&&mo?br+' '+mo:br||'—');
   s('pv-fuel',[fu,tr].filter(Boolean).join(' · ')||'—');
   s('pv-ex',ex>0?fmt.inr(ex):'—');
   s('pv-rtoi',(rto+ins)>0?fmt.inr(rto+ins):'—');
@@ -539,8 +394,8 @@ function preview(){
 }
 
 function resetForm(){
-  ['f-sp','f-cn','f-ct','f-brand','f-model','f-year','f-seg','f-variant','f-fuel','f-trans',
-   'f-ex','f-cost','f-acc','f-disc','f-rto','f-ins','f-final','f-profit','f-margin'].forEach(id=>{
+  ['f-sp','f-cn','f-ct','f-brand','f-model','f-seg','f-fuel','f-trans',
+   'f-ex','f-acc','f-disc','f-rto','f-ins','f-cost','f-final','f-profit','f-margin'].forEach(id=>{
     const el=document.getElementById(id);
     if(el.tagName==='SELECT') el.selectedIndex=0; else el.value='';
     el.classList.remove('f-err');
@@ -550,20 +405,17 @@ function resetForm(){
 }
 
 async function submitSale(){
-  const req=['f-sp','f-ct','f-brand','f-model','f-year','f-fuel','f-trans','f-date','f-ex','f-cost'];
+  const req=['f-sp','f-ct','f-brand','f-model','f-fuel','f-trans','f-date','f-ex'];
   let ok=true;
   req.forEach(id=>{const el=document.getElementById(id);if(!el.value.trim()){el.classList.add('f-err');ok=false;}else el.classList.remove('f-err');});
   if(!ok){Toast.show('warn','Missing fields','Please fill all required fields.');return;}
 
   const ex=parseFloat(document.getElementById('f-ex').value)||0;
-  const cost=parseFloat(document.getElementById('f-cost').value)||0;
   const ac=parseFloat(document.getElementById('f-acc').value)||0;
   const di=parseFloat(document.getElementById('f-disc').value)||0;
   const rto=Math.round(ex*.105), ins=Math.round(ex*.032);
-  const fin=ex+rto+ins+ac-di;
-  const profitCalc = ProfitCalc.calculate(ex, cost, ac);
-  const prf = profitCalc.profit;
-  const mar=ProfitCalc.calculateMargin(prf, fin);
+  const fin=ex+rto+ins+ac-di, cst=Math.round(fin*.87), prf=fin-cst;
+  const mar=parseFloat(fin>0?((prf/fin)*100).toFixed(2):0);
 
   const rec={
     invoice_id:InvCounter.next(ME.agency),
@@ -574,13 +426,11 @@ async function submitSale(){
     state:ME.state, city:ME.city,
     brand:document.getElementById('f-brand').value,
     model:document.getElementById('f-model').value,
-    year:parseInt(document.getElementById('f-year').value)||new Date().getFullYear(),
     segment:document.getElementById('f-seg').value,
-    variant:document.getElementById('f-variant').value||null,
     fuel_type:document.getElementById('f-fuel').value,
     transmission:document.getElementById('f-trans').value,
     exshowroom_price:ex, rto, insurance:ins, accessories:ac, discount:di,
-    final_sale_price:fin, cost_price:cost, profit:prf, profit_margin:parseFloat(mar),
+    final_sale_price:fin, cost_price:cst, profit:prf, profit_margin:mar,
     agency_id:ME.agency, agency_name:ME.name,
     submitted_at:new Date().toISOString(),
   };
@@ -600,12 +450,12 @@ async function submitSale(){
 
 async function loadRecords(){
   const tbody=document.getElementById('rec-body');
-  tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:28px;color:var(--muted)">Loading…</td></tr>';
+  tbody.innerHTML='<tr><td colspan="12" style="text-align:center;padding:28px;color:var(--muted)">Loading…</td></tr>';
   document.getElementById('rec-meta').textContent='…';
   const {rows}=await DB.getAgencySales(ME.agency);
   document.getElementById('rec-meta').textContent=rows.length+' transaction'+(rows.length!==1?'s':'')+' found';
   if(!rows.length){
-    tbody.innerHTML='<tr><td colspan="13"><div class="empty"><div class="empty-ico">📭</div><p>No records yet. Submit your first sale!</p></div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="12"><div class="empty"><div class="empty-ico">📭</div><p>No records yet. Submit your first sale!</p></div></td></tr>';
     buildSummary([]);return;
   }
   tbody.innerHTML=rows.map(r=>`<tr>
@@ -613,7 +463,6 @@ async function loadRecords(){
     <td style="color:var(--muted)">${fmt.date(r.sale_date)}</td>
     <td>${r.salesperson||'—'}</td><td>${r.customer_type||'—'}</td>
     <td style="font-weight:600">${r.brand}</td><td>${r.model}</td>
-    <td>${r.year||'—'}</td>
     <td><span class="tag t-${(r.segment||'').toLowerCase()}">${r.segment||'—'}</span></td>
     <td><span class="fd fd-${r.fuel_type}">${r.fuel_type}</span></td>
     <td>${r.transmission||'—'}</td>
@@ -644,7 +493,7 @@ function go(id){
   document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
   document.getElementById('page-'+id).classList.add('on');
   document.querySelectorAll('.nav-i').forEach(n=>{if(n.getAttribute('onclick')?.includes(id))n.classList.add('on');});
-  const T={variants:'Car Variants',entry:'New Sale Entry',records:'My Records',summary:'My Summary'};
+  const T={entry:'New Sale Entry',records:'My Records',summary:'My Summary'};
   document.getElementById('tb-title').textContent=T[id]||id;
   if(id==='records'||id==='summary') loadRecords();
 }
