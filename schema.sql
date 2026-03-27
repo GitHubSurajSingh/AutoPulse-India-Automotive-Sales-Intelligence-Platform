@@ -1,5 +1,5 @@
 -- ================================================================
---  AutoPulse — Supabase SQL Schema (Enhanced RLS)
+--  AutoPulse — Supabase SQL Schema (Enhanced with Car Variants)
 --  Run this entire file in: Supabase Dashboard → SQL Editor → Run
 -- ================================================================
 
@@ -30,9 +30,32 @@ INSERT INTO users (username, password, role, name, agency, state, city) VALUES
 ON CONFLICT (username) DO NOTHING;
 
 
--- ── 2. SALES TABLE ──────────────────────────────────────────────
+-- ── 2. CAR_VARIANTS TABLE (NEW) ─────────────────────────────────
+--  Stores car model information with manufacturing year and cost price
+CREATE TABLE IF NOT EXISTS car_variants (
+  id                BIGSERIAL PRIMARY KEY,
+  brand             TEXT NOT NULL,
+  model             TEXT NOT NULL,
+  segment           TEXT,
+  year              INTEGER,
+  variant           TEXT,
+  fuel_type         TEXT,
+  transmission      TEXT,
+  exshowroom_price  NUMERIC(14,2) NOT NULL,
+  cost_price        NUMERIC(14,2) NOT NULL,
+  agency_id         TEXT,
+  created_at        TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(brand, model, year, variant)
+);
+
+CREATE INDEX IF NOT EXISTS idx_car_variants_brand ON car_variants(brand);
+CREATE INDEX IF NOT EXISTS idx_car_variants_agency ON car_variants(agency_id);
+
+
+-- ── 3. SALES TABLE ──────────────────────────────────────────────
 --  Stores all car sales submitted by agency staff.
---  The BI dashboard merges this with the pre-cleaned 10,000-record seed dataset.
+--  Profit calculation: profit = final_sale_price - cost_price
+--  Profit margin = (profit / (final_sale_price - rto - insurance)) * 100
 CREATE TABLE IF NOT EXISTS sales (
   id                BIGSERIAL PRIMARY KEY,
   invoice_id        TEXT UNIQUE NOT NULL,
@@ -45,6 +68,8 @@ CREATE TABLE IF NOT EXISTS sales (
   brand             TEXT NOT NULL,
   model             TEXT NOT NULL,
   segment           TEXT,
+  year              INTEGER,
+  variant           TEXT,
   fuel_type         TEXT,
   transmission      TEXT,
   exshowroom_price  NUMERIC(14,2),
@@ -69,55 +94,53 @@ CREATE INDEX IF NOT EXISTS idx_sales_brand     ON sales(brand);
 CREATE INDEX IF NOT EXISTS idx_sales_submitted ON sales(submitted_at DESC);
 
 
--- ── 3. ROW LEVEL SECURITY ────────────────────────────────────────
+-- ── 4. ROW LEVEL SECURITY ────────────────────────────────────────
 
--- Enable RLS on both tables
+-- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE car_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
 -- ────────────────────────────────────────────────────────────────
 -- USERS TABLE POLICIES
 -- ────────────────────────────────────────────────────────────────
 
--- Allow anyone (anon) to read users (needed for login)
 DROP POLICY IF EXISTS "users_login_read" ON users;
 CREATE POLICY "users_login_read" ON users
   FOR SELECT USING (true);
 
--- Prevent direct updates/deletes from frontend (optional - add later for admin panel)
 DROP POLICY IF EXISTS "users_no_write" ON users;
 CREATE POLICY "users_no_write" ON users
   FOR INSERT WITH CHECK (false);
 
 
 -- ────────────────────────────────────────────────────────────────
--- SALES TABLE POLICIES (Critical for multi-device sync)
+-- CAR_VARIANTS TABLE POLICIES
 -- ────────────────────────────────────────────────────────────────
 
--- Policy 1: ANYONE can INSERT a new sale (agency submission)
+DROP POLICY IF EXISTS "car_variants_insert_agency" ON car_variants;
+CREATE POLICY "car_variants_insert_agency" ON car_variants
+  FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "car_variants_read_all" ON car_variants;
+CREATE POLICY "car_variants_read_all" ON car_variants
+  FOR SELECT USING (true);
+
+
+-- ────────────────────────────────────────────────────────────────
+-- SALES TABLE POLICIES
+-- ────────────────────────────────────────────────────────────────
+
 DROP POLICY IF EXISTS "sales_insert_any" ON sales;
 CREATE POLICY "sales_insert_any" ON sales
   FOR INSERT WITH CHECK (true);
 
--- Policy 2: ANYONE can READ all sales
---           (Managers/Admins see all data, Agencies see own data in app logic)
 DROP POLICY IF EXISTS "sales_read_all" ON sales;
 CREATE POLICY "sales_read_all" ON sales
   FOR SELECT USING (true);
 
--- Optional: If you want to enforce agency_id restrictions at database level
---           (Advanced - uncomment if needed)
--- DROP POLICY IF EXISTS "sales_read_own" ON sales;
--- CREATE POLICY "sales_read_own" ON sales
---   FOR SELECT USING (
---     auth.jwt()->>'role' = 'admin' OR
---     auth.jwt()->>'role' = 'manager' OR
---     auth.jwt()->>'role' = 'govt' OR
---     auth.jwt()->>'agency' = agency_id
---   );
 
-
--- ── 4. HELPFUL VIEWS ────────────────────────────────────────────
+-- ── 5. VIEWS ────────────────────────────────────────────────────
 
 -- Monthly aggregates for BI trend chart
 CREATE OR REPLACE VIEW sales_monthly AS
@@ -167,17 +190,3 @@ SELECT
 FROM sales
 GROUP BY agency_id, agency_name
 ORDER BY total_revenue DESC;
-
-
--- ── 5. VERIFICATION QUERIES (Run these to test) ─────────────────
-
--- Check all sales in database
--- SELECT COUNT(*) as total_sales FROM sales;
-
--- Check by agency
--- SELECT agency_id, agency_name, COUNT(*) as count FROM sales GROUP BY agency_id, agency_name;
-
--- Check recent submissions (last 24 hours)
--- SELECT invoice_id, agency_name, submitted_at FROM sales 
--- WHERE submitted_at > NOW() - INTERVAL '24 hours' 
--- ORDER BY submitted_at DESC;
