@@ -6,6 +6,11 @@
      2. Replace SUPABASE_URL and SUPABASE_ANON_KEY below
      3. Run schema.sql in Supabase → SQL Editor
    Without valid config the app runs on browser localStorage.
+   
+   PROFIT CALCULATION (UPDATED):
+     profit = exshowroom_price - cost_price + (0.30 * accessories)
+     profit_margin = (profit / final_sale_price) * 100
+     RTO and Insurance are NOT included in profit calculation
    ================================================================ */
 
 const SUPABASE_URL = 'https://jxhczcydbasgdiukmfcw.supabase.co';
@@ -56,6 +61,78 @@ const Auth = {
 
 /* ── DATABASE ──────────────────────────────────────────────────── */
 const DB = {
+  // CARS & VARIANTS
+  async getCarVariants(filter = {}) {
+    if (_sb) {
+      try {
+        let q = _sb.from('car_variants').select('*');
+        if (filter.brand) q = q.eq('brand', filter.brand);
+        if (filter.model) q = q.eq('model', filter.model);
+        if (filter.agency_id) q = q.eq('agency_id', filter.agency_id);
+        if (filter.year) q = q.eq('year', filter.year);
+        const { data } = await q;
+        if (data) return { rows: data, src: 'supabase' };
+      } catch (err) { console.error('getCarVariants error:', err); }
+    }
+    return { rows: JSON.parse(localStorage.getItem('ap_car_variants') || '[]'), src: 'local' };
+  },
+
+  async insertCarVariants(records) {
+    if (_sb) {
+      const { error } = await _sb.from('car_variants').insert(records);
+      if (!error) return { ok: true, src: 'supabase' };
+      console.error('Variant insert error:', error);
+    }
+    const k = 'ap_car_variants';
+    const a = JSON.parse(localStorage.getItem(k) || '[]');
+    a.push(...records);
+    localStorage.setItem(k, JSON.stringify(a));
+    return { ok: true, src: 'local' };
+  },
+
+  async getCarVariant(brand, model, year, fuelType, transmission, agencyId = null) {
+    const { rows } = await DB.getCarVariants({ brand, model });
+    const match = rows.find(r =>
+      r.brand === brand && r.model === model && 
+      r.year === year && r.fuel_type === fuelType && 
+      r.transmission === transmission &&
+      (agencyId ? r.agency_id === agencyId : !r.agency_id)
+    );
+    return match;
+  },
+
+  // AGENCIES
+  async getAgencies() {
+    if (_sb) {
+      try {
+        const { data } = await _sb.from('agencies').select('*').order('created_at', { ascending: false });
+        if (data) return { rows: data, src: 'supabase' };
+      } catch (_) { }
+    }
+    return { rows: [], src: 'local' };
+  },
+
+  async insertAgency(agency) {
+    if (_sb) {
+      const { error } = await _sb.from('agencies').insert([agency]);
+      if (!error) return { ok: true, src: 'supabase' };
+      return { ok: false, error };
+    }
+    return { ok: false, error: 'No database connection' };
+  },
+
+  async updateAgency(agencyId, updates) {
+    if (_sb) {
+      const { error } = await _sb.from('agencies')
+        .update(updates)
+        .eq('agency_id', agencyId);
+      if (!error) return { ok: true, src: 'supabase' };
+      return { ok: false, error };
+    }
+    return { ok: false };
+  },
+
+  // SALES
   async insertSale(rec) {
     if (_sb) {
       const { error } = await _sb.from('sales').insert([rec]);
@@ -67,6 +144,7 @@ const DB = {
     localStorage.setItem(k, JSON.stringify(a));
     return { ok: true, src: 'local' };
   },
+
   async getAgencySales(aid) {
     if (_sb) {
       try {
@@ -77,19 +155,42 @@ const DB = {
     }
     return { rows: JSON.parse(localStorage.getItem('ap_sales_' + aid) || '[]'), src: 'local' };
   },
-  async getAllSales() {
+
+  async getAllSales(filter = {}) {
     if (_sb) {
       try {
-        const { data } = await _sb.from('sales').select('*')
-          .order('submitted_at', { ascending: false });
+        let q = _sb.from('sales').select('*');
+        if (filter.year) q = q.eq('year', filter.year);
+        if (filter.state) q = q.eq('state', filter.state);
+        if (filter.brand) q = q.eq('brand', filter.brand);
+        const { data } = await q.order('submitted_at', { ascending: false });
         if (data) return { rows: data, src: 'supabase' };
-      } catch (_) { }
+      } catch (err) { console.error('getAllSales error:', err); }
     }
     let all = [];
     Object.values(USERS).filter(u => u.role === 'agency' && u.agency).forEach(u => {
       all = all.concat(JSON.parse(localStorage.getItem('ap_sales_' + u.agency) || '[]'));
     });
     return { rows: all.sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at)), src: 'local' };
+  },
+};
+
+/* ── PROFIT CALCULATOR (UPDATED) ─────────────────────────────── */
+const ProfitCalc = {
+  // Profit = exshowroom_price - cost_price + (0.30 * accessories)
+  // RTO and Insurance are NOT included
+  calculate(exPrice, costPrice, accessories) {
+    const accessoryProfit = (accessories || 0) * 0.30;
+    const profit = exPrice - costPrice + accessoryProfit;
+    return {
+      profit: Math.round(profit),
+      accessoryProfit: Math.round(accessoryProfit)
+    };
+  },
+
+  // Calculate margin based on final sale price
+  calculateMargin(profit, finalSalePrice) {
+    return finalSalePrice > 0 ? ((profit / finalSalePrice) * 100).toFixed(2) : 0;
   },
 };
 
