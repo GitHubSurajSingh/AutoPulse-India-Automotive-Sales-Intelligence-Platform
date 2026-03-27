@@ -64,6 +64,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-
 .ph-l p{font-size:12px;color:var(--muted);margin-top:3px}
 .ph-r{font-size:11px;color:var(--muted)}
 
+/* ── FILTERS ── */
+.filter-section{display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+.filter-section select{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--ink);padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
+.filter-section select:focus{border-color:var(--accent)}
+.filter-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:600;flex-shrink:0}
+
 /* ── KPI CARDS ── */
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin-bottom:18px}
 .kpi{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s}
@@ -192,6 +198,7 @@ tbody tr:last-child td{border-bottom:none}
 
 /* ADMIN */
 .admin-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.admin-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 .acc-tbl{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
 .acc-tbl th{text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)}
 .acc-tbl td{padding:9px 10px;border-bottom:1px solid rgba(37,42,62,.4)}
@@ -207,6 +214,12 @@ tbody tr:last-child td{border-bottom:none}
 .sys-row:last-child{border-bottom:none}
 .sys-k{color:var(--muted)}
 
+/* AGENCY FORM */
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:5px;font-weight:600}
+.form-group input{background:var(--s2);border:1px solid var(--border);border-radius:7px;color:var(--ink);padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:12px;width:100%;outline:none}
+.form-group input:focus{border-color:var(--accent)}
+
 /* EXPORT BTN */
 .btn-export{background:rgba(54,212,144,.08);border:1px solid rgba(54,212,144,.2);color:var(--green);padding:7px 13px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;transition:all .18s;display:flex;align-items:center;gap:5px}
 .btn-export:hover{background:rgba(54,212,144,.14)}
@@ -215,6 +228,11 @@ tbody tr:last-child td{border-bottom:none}
 .loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999}
 .loading-ring{width:46px;height:46px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:16px}
 .loading-txt{font-size:13px;color:var(--muted)}
+
+/* BTN SAVE */
+.btn-save{background:var(--accent);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(244,121,59,.3)}
+.btn-save:disabled{opacity:.5;cursor:not-allowed}
 </style>
 </head>
 <body>
@@ -265,6 +283,31 @@ tbody tr:last-child td{border-bottom:none}
       <div class="ph-l"><h1>National Sales Overview</h1><p>Cleaned dataset — all agencies, states, and brands combined</p></div>
       <div class="ph-r">Updated: <span id="last-updated">—</span></div>
     </div>
+
+    <!-- FILTERS -->
+    <div class="filter-section">
+      <span class="filter-label">Filter by</span>
+      <select id="filter-year" onchange="applyOverviewFilters()">
+        <option value="">All Years</option>
+        <option>2024</option><option>2025</option><option>2026</option>
+      </select>
+      <select id="filter-month" onchange="applyOverviewFilters()">
+        <option value="">All Months</option>
+        <option value="1">January</option><option value="2">February</option>
+        <option value="3">March</option><option value="4">April</option>
+        <option value="5">May</option><option value="6">June</option>
+        <option value="7">July</option><option value="8">August</option>
+        <option value="9">September</option><option value="10">October</option>
+        <option value="11">November</option><option value="12">December</option>
+      </select>
+      <select id="filter-state-overview" onchange="applyOverviewFilters()">
+        <option value="">All States</option>
+        <option>Delhi</option><option>Karnataka</option>
+        <option>Madhya Pradesh</option><option>Maharashtra</option>
+      </select>
+      <button class="btn-export" style="background:rgba(255,92,92,.08);border:1px solid rgba(255,92,92,.2);color:var(--red)" onclick="clearOverviewFilters()">✕ Clear</button>
+    </div>
+
     <div class="kpis">
       <div class="kpi k1"><div class="kpi-l">Total Revenue</div><div class="kpi-v" id="kv-rev">—</div><div class="kpi-s"><strong id="kv-units">—</strong> transactions</div><div class="kpi-ico">💰</div></div>
       <div class="kpi k2"><div class="kpi-l">Total Profit</div><div class="kpi-v" id="kv-profit">—</div><div class="kpi-s">Avg margin <strong id="kv-margin">—</strong></div><div class="kpi-ico">📈</div></div>
@@ -330,6 +373,17 @@ tbody tr:last-child td{border-bottom:none}
         <!-- FILTER BAR -->
         <div class="filter-bar">
           <span class="filter-label">Filters</span>
+          <select id="fl-year" onchange="applyFilters()">
+            <option value="">All Years</option>
+            <option>2024</option><option>2025</option><option>2026</option>
+          </select>
+          <select id="fl-month" onchange="applyFilters()">
+            <option value="">All Months</option>
+            <option value="1">Jan</option><option value="2">Feb</option><option value="3">Mar</option>
+            <option value="4">Apr</option><option value="5">May</option><option value="6">Jun</option>
+            <option value="7">Jul</option><option value="8">Aug</option><option value="9">Sep</option>
+            <option value="10">Oct</option><option value="11">Nov</option><option value="12">Dec</option>
+          </select>
           <select id="fl-state" onchange="applyFilters()">
             <option value="">All States</option>
             <option>Delhi</option><option>Karnataka</option>
@@ -356,10 +410,6 @@ tbody tr:last-child td{border-bottom:none}
             <option value="">All Customers</option>
             <option>Individual</option><option>Corporate</option><option>Government</option>
           </select>
-          <div class="filter-sep"></div>
-          <span class="filter-label">Date</span>
-          <input type="date" id="fl-date-from" onchange="applyFilters()" title="From date">
-          <input type="date" id="fl-date-to"   onchange="applyFilters()" title="To date">
           <div class="filter-sep"></div>
           <span class="filter-label">Price ₹</span>
           <input type="number" id="fl-price-min" placeholder="Min" oninput="applyFilters()" style="background:var(--s2);border:1.5px solid var(--border);border-radius:8px;color:var(--ink);padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;width:100px;transition:border-color .18s">
@@ -391,6 +441,7 @@ tbody tr:last-child td{border-bottom:none}
             <tr>
               <th onclick="sortBy('invoice_id')" id="th-invoice_id">Invoice</th>
               <th onclick="sortBy('sale_date')"  id="th-sale_date">Date</th>
+              <th onclick="sortBy('year')" id="th-year">Year</th>
               <th onclick="sortBy('state')"      id="th-state">State</th>
               <th onclick="sortBy('city')"       id="th-city">City</th>
               <th onclick="sortBy('salesperson')"id="th-salesperson">Salesperson</th>
@@ -400,7 +451,7 @@ tbody tr:last-child td{border-bottom:none}
               <th class="no-sort">Segment</th>
               <th class="no-sort">Fuel</th>
               <th onclick="sortBy('transmission')" id="th-transmission">Trans</th>
-              <th onclick="sortBy('exshowroom_price')" id="th-exshowroom_price">Ex-Showroom</th>
+              <th onclick="sortBy('exshowroom_price')" id="th-exshowroom_price">Ex-Show</th>
               <th onclick="sortBy('final_sale_price')" id="th-final_sale_price">Final Price</th>
               <th onclick="sortBy('profit')"     id="th-profit">Profit</th>
               <th onclick="sortBy('profit_margin')" id="th-profit_margin">Margin</th>
@@ -421,14 +472,15 @@ tbody tr:last-child td{border-bottom:none}
 
   <!-- ── ADMIN ── -->
   <div class="page" id="page-admin">
-    <div class="ph"><div class="ph-l"><h1>Admin Panel</h1><p>User management, access matrix, and system status</p></div></div>
-    <div class="admin-2">
+    <div class="ph"><div class="ph-l"><h1>Admin Panel</h1><p>User management, agency setup, and system status</p></div></div>
+    <div class="admin-3">
+      <div class="cc"><div class="cc-t" style="margin-bottom:14px">Agencies</div><div id="agency-list"></div><button class="btn-save" id="new-agency-btn" onclick="showNewAgencyForm()" style="margin-top:12px;width:100%">+ Add Agency</button></div>
       <div class="cc"><div class="cc-t" style="margin-bottom:14px">User Accounts</div><div id="user-list"></div></div>
       <div>
         <div class="cc" style="margin-bottom:13px">
           <div class="cc-t" style="margin-bottom:12px">Access Control Matrix</div>
           <table class="acc-tbl">
-            <thead><tr><th>Role</th><th>BI Dashboard</th><th>All Transactions</th><th>Enter Sales</th><th>Own Records</th></tr></thead>
+            <thead><tr><th>Role</th><th>BI Dashboard</th><th>All Trans</th><th>Enter Sales</th><th>Own Data</th></tr></thead>
             <tbody>
               <tr><td><span class="chip ch-admin" style="font-size:9px">Admin</span></td>   <td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td><td class="tick">✓</td></tr>
               <tr><td><span class="chip ch-manager" style="font-size:9px">Manager</span></td><td class="tick">✓</td><td class="tick">✓</td><td class="cross">✗</td><td class="cross">✗</td></tr>
@@ -444,9 +496,28 @@ tbody tr:last-child td{border-bottom:none}
           <div class="sys-row"><span class="sys-k">Seed Records</span><span style="color:var(--green)">10,000 (from CSV)</span></div>
           <div class="sys-row"><span class="sys-k">Live Submissions</span><span id="sys-live" style="color:var(--blue)">—</span></div>
           <div class="sys-row"><span class="sys-k">Total Records</span><span id="sys-total" style="color:var(--ink);font-weight:600">—</span></div>
+          <div class="sys-row"><span class="sys-k">Profit Calculation</span><span style="color:var(--accent)">ex − cost + (30% acc)</span></div>
           <div class="sys-row"><span class="sys-k">Auto-Refresh</span><span style="color:var(--green)">Every 24 hours</span></div>
           <div class="sys-row"><span class="sys-k">Next Refresh In</span><span style="color:var(--blue)" data-countdown>—</span></div>
           <div class="sys-row"><span class="sys-k">Last Updated</span><span id="sys-ts" style="color:var(--ink)">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New Agency Form (Hidden) -->
+    <div id="new-agency-form" style="display:none;margin-top:26px">
+      <div class="cc">
+        <div class="cc-t" style="margin-bottom:18px">Create New Agency</div>
+        <div class="form-group"><label>Agency Name</label><input id="na-name" type="text" placeholder="e.g. Chennai AutoHub"></div>
+        <div class="form-group"><label>Agency ID</label><input id="na-id" type="text" placeholder="e.g. chn_hub"></div>
+        <div class="form-group"><label>State</label><input id="na-state" type="text" placeholder="e.g. Tamil Nadu"></div>
+        <div class="form-group"><label>City</label><input id="na-city" type="text" placeholder="e.g. Chennai"></div>
+        <div class="form-group"><label>Username</label><input id="na-username" type="text" placeholder="Login username"></div>
+        <div class="form-group"><label>Password</label><input id="na-password" type="password" placeholder="Initial password"></div>
+        <div class="form-group"><label>Contact Name</label><input id="na-contact" type="text" placeholder="Contact person name"></div>
+        <div style="display:flex;gap:8px;margin-top:16px">
+          <button class="btn-save" onclick="createAgency()">✓ Create Agency</button>
+          <button class="btn-export" style="background:rgba(255,92,92,.08);border:1px solid rgba(255,92,92,.2);color:var(--red)" onclick="hideNewAgencyForm()">✕ Cancel</button>
         </div>
       </div>
     </div>
@@ -468,17 +539,16 @@ RC.textContent=ME.role.toUpperCase(); RC.className='chip '+(RCL[ME.role]||'ch-ad
 
 /* ── DATA STATE ── */
 let liveSales = [];
-let allRows   = []; // seed + live combined
-let filtered  = []; // after filters applied
+let allRows   = [];
+let filtered  = [];
 let sortCol   = 'sale_date';
 let sortDir   = 'desc';
 let currentPage = 1;
 let pageSize    = 50;
 
-/* Build combined rows from SEED_TRANSACTIONS + live */
 function buildAllRows(){
   const seed = SEED_TRANSACTIONS.map(r=>({
-    invoice_id:r.id, sale_date:r.date, state:r.state, city:r.city,
+    invoice_id:r.id, sale_date:r.date, year:parseInt(r.date.slice(0,4))||2024, state:r.state, city:r.city,
     salesperson:r.salesperson, customer_type:r.ctype,
     brand:r.brand, model:r.model, segment:r.segment,
     fuel_type:r.fuel, transmission:r.trans,
@@ -489,16 +559,14 @@ function buildAllRows(){
     _source:'seed'
   }));
   const live = liveSales.map(r=>({...r, _source:'live'}));
-  allRows = [...live, ...seed]; // live first
+  allRows = [...live, ...seed];
 }
 
-/* ── FETCH LIVE DATA ── */
 async function fetchLive(){
   const {rows} = await DB.getAllSales();
   liveSales = rows;
 }
 
-/* ── KPI UPDATE ── */
 function updateKPIs(){
   buildAllRows();
   const totalRev  = allRows.reduce((s,r)=>s+r.final_sale_price,0);
@@ -518,6 +586,41 @@ function updateKPIs(){
   document.getElementById('sys-total').textContent    = totalU.toLocaleString('en-IN')+' records';
 }
 
+// Overview Filters
+function applyOverviewFilters(){
+  const year = document.getElementById('filter-year').value;
+  const month = document.getElementById('filter-month').value;
+  const state = document.getElementById('filter-state-overview').value;
+  
+  buildAllRows();
+  let filtered = allRows;
+  
+  if(year) filtered = filtered.filter(r => r.year.toString() === year);
+  if(month) filtered = filtered.filter(r => {
+    const m = parseInt(r.sale_date.split('-')[1]);
+    return m === parseInt(month);
+  });
+  if(state) filtered = filtered.filter(r => r.state === state);
+  
+  const totalRev  = filtered.reduce((s,r)=>s+r.final_sale_price,0);
+  const totalProf = filtered.reduce((s,r)=>s+r.profit,0);
+  const totalU    = filtered.length;
+  const avgMar    = totalU ? filtered.reduce((s,r)=>s+r.profit_margin,0)/totalU : 0;
+  document.getElementById('kv-rev').textContent    = fmt.inrB(totalRev);
+  document.getElementById('kv-profit').textContent = fmt.inrB(totalProf);
+  document.getElementById('kv-margin').textContent = fmt.pct(avgMar);
+  document.getElementById('kv-units').textContent  = totalU.toLocaleString('en-IN');
+  document.getElementById('kv-avg').textContent    = fmt.inrM(totalU ? totalRev/totalU : 0);
+  document.getElementById('kv-ppu').textContent    = fmt.inrM(totalU ? totalProf/totalU : 0);
+}
+
+function clearOverviewFilters(){
+  document.getElementById('filter-year').value = '';
+  document.getElementById('filter-month').value = '';
+  document.getElementById('filter-state-overview').value = '';
+  updateKPIs();
+}
+
 /* ── CHARTS ── */
 const G={color:'rgba(37,42,62,.8)',drawBorder:false};
 const T={color:'#5c6280',font:{size:11,family:'DM Sans'}};
@@ -529,7 +632,6 @@ function mk(id,type,data,opts){
   CH[id]=new Chart(document.getElementById(id),{type,data,options:opts});
 }
 
-/* Pre-aggregate from seed for performance */
 const S = {
   monthly:[
     {m:'Nov 24',rev:659.50,profit:131.56,cnt:385},{m:'Dec 24',rev:667.12,profit:134.21,cnt:389},
@@ -587,7 +689,6 @@ function buildCharts(){
   mk('ch-state-u','doughnut',{labels:S.states.map(s=>s.n),datasets:[{data:S.states.map(s=>s.cnt),backgroundColor:[C.or,C.bl,C.pu,C.gr],borderWidth:0,hoverOffset:8}]},{responsive:true,cutout:'60%',animation:{duration:700},plugins:{legend:{position:'bottom',labels:{color:'#5c6280',boxWidth:8,padding:12,font:{size:11}}}}});
 }
 
-/* ── BRAND GRID ── */
 function buildBrandGrid(){
   document.getElementById('brand-grid').innerHTML=S.brands.map(b=>`
     <div class="bc"><div class="bc-n">${b.n}</div><div class="bc-r">₹${b.rev}B</div>
@@ -596,7 +697,6 @@ function buildBrandGrid(){
   `).join('');
 }
 
-/* ── HEATMAP ── */
 function buildHeatmap(){
   const brands=['Honda','Hyundai','Kia','MG','Mahindra','Maruti Suzuki','Tata','Toyota'];
   const states=Object.keys(S.heatmap);
@@ -614,7 +714,6 @@ function buildHeatmap(){
   document.getElementById('heatmap').innerHTML=hdr+`<tbody>${rows}</tbody>`;
 }
 
-/* ── STATE DETAILS ── */
 function buildStateDetails(){
   const tot=S.states.reduce((s,r)=>s+r.cnt,0);
   document.getElementById('state-kpis').innerHTML=S.states.map((s,i)=>`
@@ -635,35 +734,34 @@ function buildStateDetails(){
 /* ── TRANSACTIONS FILTER + SORT + PAGINATE ── */
 function applyFilters(){
   const q   =(document.getElementById('txn-search').value||'').toLowerCase();
+  const fyr = document.getElementById('fl-year').value;
+  const fmo = document.getElementById('fl-month').value;
   const fst = document.getElementById('fl-state').value;
   const fbr = document.getElementById('fl-brand').value;
   const fsg = document.getElementById('fl-seg').value;
   const ffu = document.getElementById('fl-fuel').value;
   const ftr = document.getElementById('fl-trans').value;
   const fct = document.getElementById('fl-ctype').value;
-  const fdf = document.getElementById('fl-date-from').value;
-  const fdt = document.getElementById('fl-date-to').value;
   const fpn = parseFloat(document.getElementById('fl-price-min').value)||0;
   const fpx = parseFloat(document.getElementById('fl-price-max').value)||Infinity;
 
   let actCount=0;
-  if(fst)actCount++;if(fbr)actCount++;if(fsg)actCount++;if(ffu)actCount++;
-  if(ftr)actCount++;if(fct)actCount++;if(fdf)actCount++;if(fdt)actCount++;
-  if(fpn)actCount++;if(fpx<Infinity)actCount++;if(q)actCount++;
+  if(fyr)actCount++;if(fmo)actCount++;if(fst)actCount++;if(fbr)actCount++;if(fsg)actCount++;
+  if(ffu)actCount++;if(ftr)actCount++;if(fct)actCount++;if(fpn)actCount++;if(fpx<Infinity)actCount++;if(q)actCount++;
 
   const afc=document.getElementById('afc');
   afc.textContent=actCount;
   afc.className='active-filter-count'+(actCount>0?' show':'');
 
   filtered = allRows.filter(r=>{
+    if(fyr && r.year.toString()!==fyr) return false;
+    if(fmo && parseInt(r.sale_date.split('-')[1])!==parseInt(fmo)) return false;
     if(fst && r.state!==fst) return false;
     if(fbr && r.brand!==fbr) return false;
     if(fsg && r.segment!==fsg) return false;
     if(ffu && r.fuel_type!==ffu) return false;
     if(ftr && r.transmission!==ftr) return false;
     if(fct && r.customer_type!==fct) return false;
-    if(fdf && r.sale_date<fdf) return false;
-    if(fdt && r.sale_date>fdt) return false;
     if(r.final_sale_price<fpn||r.final_sale_price>fpx) return false;
     if(q){
       const hay=[r.invoice_id,r.salesperson,r.brand,r.model,r.city,r.state,r.customer_type,r.fuel_type].map(x=>(x||'').toLowerCase()).join(' ');
@@ -672,7 +770,6 @@ function applyFilters(){
     return true;
   });
 
-  // sort
   filtered.sort((a,b)=>{
     let av=a[sortCol]||'', bv=b[sortCol]||'';
     if(typeof av==='number'||!isNaN(parseFloat(av))){av=parseFloat(av);bv=parseFloat(bv);}
@@ -700,8 +797,8 @@ function sortBy(col){
 }
 
 function clearFilters(){
-  ['fl-state','fl-brand','fl-seg','fl-fuel','fl-trans','fl-ctype'].forEach(id=>document.getElementById(id).selectedIndex=0);
-  ['fl-date-from','fl-date-to','fl-price-min','fl-price-max'].forEach(id=>document.getElementById(id).value='');
+  ['fl-year','fl-month','fl-state','fl-brand','fl-seg','fl-fuel','fl-trans','fl-ctype'].forEach(id=>document.getElementById(id).selectedIndex=0);
+  ['fl-price-min','fl-price-max'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('txn-search').value='';
   applyFilters();
 }
@@ -718,6 +815,7 @@ function renderTable(){
   tbody.innerHTML=page.map(r=>`<tr>
     <td class="inv">${r.invoice_id}</td>
     <td style="color:var(--muted);font-size:11px">${fmt.date(r.sale_date)}</td>
+    <td>${r.year||'—'}</td>
     <td>${r.state}</td>
     <td>${r.city||'—'}</td>
     <td>${r.salesperson||'—'}</td>
@@ -734,7 +832,6 @@ function renderTable(){
     <td>${r._source==='live'?`<span class="source-live">● Live</span>`:`<span class="source-seed">Seed</span>`}</td>
   </tr>`).join('');
 
-  // Pagination buttons
   const totalPages=Math.ceil(filtered.length/pageSize);
   const btns=document.getElementById('pg-btns');
   if(totalPages<=1){btns.innerHTML='';return;}
@@ -756,9 +853,8 @@ function gotoPage(p){
   document.getElementById('page-transactions').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-/* ── EXPORT CSV ── */
 function exportCSV(){
-  const cols=['invoice_id','sale_date','state','city','salesperson','customer_type','brand','model','segment','fuel_type','transmission','exshowroom_price','final_sale_price','profit','profit_margin'];
+  const cols=['invoice_id','sale_date','year','state','city','salesperson','customer_type','brand','model','segment','fuel_type','transmission','exshowroom_price','final_sale_price','profit','profit_margin'];
   const hdr=cols.join(',');
   const rows=filtered.map(r=>cols.map(c=>{
     const v=r[c]??'';
@@ -773,6 +869,19 @@ function exportCSV(){
 }
 
 /* ── ADMIN PANEL ── */
+async function loadAgencies(){
+  const {rows} = await DB.getAgencies();
+  const html = rows.length ? rows.map(a => `
+    <div class="u-row">
+      <div class="u-name">${a.name}
+        <span class="chip ch-agency" style="font-size:9px">Agency</span>
+      </div>
+      <div class="u-cred"><code>${a.agency_id}</code> · ${a.city}, ${a.state}</div>
+    </div>
+  `).join('') : '<div class="u-cred">No agencies created yet</div>';
+  document.getElementById('agency-list').innerHTML = html;
+}
+
 function buildAdmin(){
   const CHIP={admin:'ch-admin',manager:'ch-manager',govt:'ch-govt'};
   document.getElementById('user-list').innerHTML=Object.entries(USERS).map(([u,d])=>`
@@ -786,6 +895,54 @@ function buildAdmin(){
   document.getElementById('sys-db').innerHTML=DB_ENABLED
     ?'<span style="color:var(--green)">✓ Supabase Connected</span>'
     :'<span style="color:var(--accent)">⚠ localStorage Mode</span>';
+  loadAgencies();
+}
+
+function showNewAgencyForm(){
+  document.getElementById('new-agency-form').style.display = 'block';
+  document.getElementById('new-agency-btn').style.display = 'none';
+}
+
+function hideNewAgencyForm(){
+  document.getElementById('new-agency-form').style.display = 'none';
+  document.getElementById('new-agency-btn').style.display = 'inline-block';
+  ['na-name','na-id','na-state','na-city','na-username','na-password','na-contact'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+async function createAgency(){
+  const name = document.getElementById('na-name').value.trim();
+  const id = document.getElementById('na-id').value.trim();
+  const state = document.getElementById('na-state').value.trim();
+  const city = document.getElementById('na-city').value.trim();
+  const username = document.getElementById('na-username').value.trim();
+  const password = document.getElementById('na-password').value;
+  const contact = document.getElementById('na-contact').value.trim();
+
+  if(!name||!id||!state||!city||!username||!password){
+    Toast.show('warn','Missing Fields','Please fill all required fields');
+    return;
+  }
+
+  const agency = {
+    agency_id: id,
+    name: name,
+    state: state,
+    city: city,
+    username: username,
+    password: password,
+    contact_name: contact || null
+  };
+
+  const res = await DB.insertAgency(agency);
+  if(res.ok){
+    Toast.show('ok','Agency Created!',name + ' has been added successfully.');
+    hideNewAgencyForm();
+    loadAgencies();
+  } else {
+    Toast.show('err','Creation Failed',res.error?.message || 'Could not create agency');
+  }
 }
 
 /* ── PAGE ROUTING ── */
@@ -799,7 +956,6 @@ function go(id){
   if(id==='transactions') applyFilters();
 }
 
-/* ── REFRESH ── */
 async function doRefresh(){
   await fetchLive();
   buildAllRows();
@@ -818,7 +974,6 @@ async function manualRefresh(){
   Toast.show('ok','Refreshed','Dashboard updated with latest data.');
 }
 
-/* ── DEFAULT SORT INDICATOR ── */
 function initSortIndicator(){
   const el=document.getElementById('th-sale_date');
   if(el) el.classList.add('sort-d');
