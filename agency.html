@@ -382,7 +382,7 @@ function calc(){
   document.getElementById('f-ins').value = ins ? ins.toLocaleString('en-IN') : '';
   document.getElementById('f-final').value = finalPrice ? finalPrice.toLocaleString('en-IN') : '';
   document.getElementById('f-profit').value = profit ? profit.toLocaleString('en-IN') : '';
-  document.getElementById('f-margin').value = revenue ? margin.toFixed(2) + ' %' : '';
+  document.getElementById('f-margin').value = revenue ? margin.toLocaleString(2) + ' %' : '';
 
   preview();
 }
