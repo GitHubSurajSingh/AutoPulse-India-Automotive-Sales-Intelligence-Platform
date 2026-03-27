@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS car_variants (
   agency_id         TEXT,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW(),
-  (brand, model, year, variant, fuel_type, transmission, agency_id)
+  UNIQUE(brand, model, year, variant, fuel_type, transmission)
 );
 
 -- Index for quick lookups
