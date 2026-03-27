@@ -235,7 +235,10 @@ tbody tr:last-child td{border-bottom:none}
            <!-- Added an input for the base price (ex+) to trigger the calculation -->
            <div class="f"><label>Profit <small>[auto]</small></label><input id="f-profit" readonly class="f-profit"></div>
             <div class="f"><label>Profit Margin % <small>[auto]</small></label><input id="f-margin" readonly class="f-profit"></div>
-            
+             <script>document.getElementById('f-ex-price').addEventListener('input', function() {const exPrice = parseFloat(this.value) || 0;
+              document.getElementById('f-profit').value = profit.toFixed(2);
+              document.getElementById('f-margin').value = margin.toFixed(2) + '%';}); 
+             </script>
         <div class="form-actions">
               <button class="btn-ghost" onclick="resetForm()">✕ Clear</button>
               <button class="btn-save" id="save-btn" onclick="submitSale()">
